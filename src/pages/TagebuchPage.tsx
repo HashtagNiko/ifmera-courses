@@ -11,12 +11,13 @@ import {
   type TagebuchTag,
 } from '../lib/tagebuch'
 import Kopfzeile from '../components/Kopfzeile'
+import { useDurchlauf } from '../lib/DurchlaufContext'
 
 export default function TagebuchPage() {
   const [kurse, setKurse] = useState<Kurs[]>([])
   const [kursId, setKursId] = useState<string | null>(null)
   const [durchlaeufe, setDurchlaeufe] = useState<Durchlauf[]>([])
-  const [durchlaufId, setDurchlaufId] = useState<string | null>(null)
+  const { durchlaufId, setDurchlaufId } = useDurchlauf()
   const [tage, setTage] = useState<TagebuchTag[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [neuOffen, setNeuOffen] = useState(false)
@@ -35,7 +36,9 @@ export default function TagebuchPage() {
     durchlaeufeLaden(kursId)
       .then((d) => {
         setDurchlaeufe(d)
-        setDurchlaufId(d[0]?.id ?? null)
+        // Gemerkte Wahl behalten, solange es sie noch gibt.
+        const gemerkt = d.find((x) => x.id === durchlaufId)
+        if (!gemerkt) setDurchlaufId(d[0]?.id ?? null)
       })
       .catch((e: Error) => setFehler(e.message))
   }, [kursId])

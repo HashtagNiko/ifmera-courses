@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { deckOeffnen } from '../lib/deckOeffnen'
 import Kopfzeile from '../components/Kopfzeile'
 import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse'
+import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
+import { useDurchlauf } from '../lib/DurchlaufContext'
 
 export default function DashboardPage() {
   const [kurse, setKurse] = useState<Kurs[]>([])
@@ -9,6 +11,9 @@ export default function DashboardPage() {
   const [tage, setTage] = useState<Kurstag[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(true)
+  const { durchlaufId } = useDurchlauf()
+  const [vermittelt, setVermittelt] = useState<Set<string>>(new Set())
+  const [durchlaufName, setDurchlaufName] = useState<string | null>(null)
 
   useEffect(() => {
     kurseLaden()
@@ -28,6 +33,26 @@ export default function DashboardPage() {
       .then((alle) => setTage(alle.filter((t) => t.deck_pfad)))
       .catch((e: Error) => setFehler(e.message))
   }, [aktiverKurs])
+
+  // Grün markiert wird immer der Stand des Durchlaufs, der im Tagebuch gewählt
+  // ist. Sein Name steht mit dabei, sonst wäre unklar, worauf sich Grün bezieht.
+  useEffect(() => {
+    if (!durchlaufId) {
+      setVermittelt(new Set())
+      setDurchlaufName(null)
+      return
+    }
+    vermitteltIds(durchlaufId)
+      .then(setVermittelt)
+      .catch((e: Error) => setFehler(e.message))
+  }, [durchlaufId, tage])
+
+  useEffect(() => {
+    if (!aktiverKurs || !durchlaufId) return
+    durchlaeufeLaden(aktiverKurs)
+      .then((d) => setDurchlaufName(d.find((x) => x.id === durchlaufId)?.name ?? null))
+      .catch(() => setDurchlaufName(null))
+  }, [aktiverKurs, durchlaufId])
 
   const segmente = [...new Set(tage.map((t) => t.segment ?? 0))].sort((a, b) => a - b)
 
@@ -54,6 +79,13 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {durchlaufName && (
+          <p className="mb-6 text-sm text-ifm-gray">
+            Grün markiert: im Durchlauf <span className="text-ifm-blue">{durchlaufName}</span>{' '}
+            bereits vermittelt ({tage.filter((t) => vermittelt.has(t.id)).length} von {tage.length})
+          </p>
+        )}
+
         {fehler && (
           <p className="rounded-lg bg-ifm-red/15 text-ifm-blue text-sm p-3">{fehler}</p>
         )}
@@ -73,7 +105,7 @@ export default function DashboardPage() {
               {tage
                 .filter((t) => (t.segment ?? 0) === seg)
                 .map((t) => (
-                  <Kachel key={t.id} tag={t} />
+                  <Kachel key={t.id} tag={t} vermittelt={vermittelt.has(t.id)} />
                 ))}
             </div>
           </section>
@@ -94,10 +126,13 @@ function segmentUeberschrift(tage: Kurstag[], segment: number): string {
   return name ? `Segment ${segment} · ${name}` : `Segment ${segment}`
 }
 
-function Kachel({ tag }: { tag: Kurstag }) {
+function Kachel({ tag, vermittelt }: { tag: Kurstag; vermittelt: boolean }) {
   const inhalt = (
     <>
-      <span className="text-xs font-medium text-ifm-gray">Tag {tag.nummer}</span>
+      <span className="flex items-center gap-1.5 text-xs font-medium text-ifm-gray">
+        Tag {tag.nummer}
+        {vermittelt && <span className="text-ifm-green" title="bereits vermittelt">✓</span>}
+      </span>
       <span className="mt-1 block font-medium text-ifm-blue">{tag.titel ?? 'Ohne Titel'}</span>
       <span className="mt-3 block text-xs text-ifm-gray">
         {tag.deck_pfad
@@ -107,7 +142,10 @@ function Kachel({ tag }: { tag: Kurstag }) {
     </>
   )
 
-  const klassen = 'block w-full text-left rounded-xl bg-white p-4 shadow-sm border border-transparent'
+  // Der grüne Ton bleibt hell, damit der Text darauf lesbar bleibt; das Häkchen
+  // trägt die Aussage mit, falls jemand die Farbe schlecht unterscheidet.
+  const grund = vermittelt ? 'bg-ifm-green/12 border-ifm-green/45' : 'bg-white border-transparent'
+  const klassen = `block w-full text-left rounded-xl p-4 shadow-sm border ${grund}`
 
   if (!tag.deck_pfad) {
     return <div className={`${klassen} opacity-60`}>{inhalt}</div>

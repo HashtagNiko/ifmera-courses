@@ -107,6 +107,17 @@ export async function standSetzen(
   if (error) throw new Error(error.message)
 }
 
+/** Die Ids der Tage, die in diesem Durchlauf als vermittelt markiert sind. */
+export async function vermitteltIds(durchlaufId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('fortschritt')
+    .select('kurstag_id')
+    .eq('durchlauf_id', durchlaufId)
+    .eq('vermittelt', true)
+  if (error) throw new Error(error.message)
+  return new Set((data ?? []).map((z) => z.kurstag_id as string))
+}
+
 /** Der Text, der ins Trainertagebuch kopiert wird: ein Punkt je Zeile. */
 export function kopiertext(tag: TagebuchTag): string {
   if (!tag.tagebuch_text) return ''
