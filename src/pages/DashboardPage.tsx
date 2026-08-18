@@ -5,10 +5,13 @@ import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 
+/** Kurstag mit dem Segment, unter dem er einsortiert wird. */
+type TagImSegment = Kurstag & { segmentEffektiv: number }
+
 export default function DashboardPage() {
   const [kurse, setKurse] = useState<Kurs[]>([])
   const [aktiverKurs, setAktiverKurs] = useState<string | null>(null)
-  const [tage, setTage] = useState<Kurstag[]>([])
+  const [tage, setTage] = useState<TagImSegment[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(true)
   const { durchlaufId } = useDurchlauf()
@@ -28,9 +31,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!aktiverKurs) return
     kurstageLaden(aktiverKurs)
-      // Projekttage und Abschlusspruefung haben kein Deck; sie stehen im
-      // Trainertagebuch, hier waeren sie nur leere Kacheln.
-      .then((alle) => setTage(alle.filter((t) => t.deck_pfad)))
+      .then((alle) => setTage(einsortieren(alle)))
       .catch((e: Error) => setFehler(e.message))
   }, [aktiverKurs])
 
@@ -54,7 +55,7 @@ export default function DashboardPage() {
       .catch(() => setDurchlaufName(null))
   }, [aktiverKurs, durchlaufId])
 
-  const segmente = [...new Set(tage.map((t) => t.segment ?? 0))].sort((a, b) => a - b)
+  const segmente = [...new Set(tage.map((t) => t.segmentEffektiv))].sort((a, b) => a - b)
 
   return (
     <div className="min-h-full bg-ifm-cream">
@@ -86,9 +87,7 @@ export default function DashboardPage() {
           </p>
         )}
 
-        {fehler && (
-          <p className="rounded-lg bg-ifm-red/15 text-ifm-blue text-sm p-3">{fehler}</p>
-        )}
+        {fehler && <p className="rounded-lg bg-ifm-red/15 text-ifm-blue text-sm p-3">{fehler}</p>}
 
         {!fehler && !laedt && tage.length === 0 && (
           <p className="rounded-lg bg-ifm-lightblue text-ifm-blue text-sm p-4">
@@ -103,7 +102,7 @@ export default function DashboardPage() {
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {tage
-                .filter((t) => (t.segment ?? 0) === seg)
+                .filter((t) => t.segmentEffektiv === seg)
                 .map((t) => (
                   <Kachel key={t.id} tag={t} vermittelt={vermittelt.has(t.id)} />
                 ))}
@@ -116,49 +115,97 @@ export default function DashboardPage() {
 }
 
 /**
+ * Ordnet jedem Tag ein Segment zu. Projekttage und die Abschlussprüfung tragen
+ * selbst keines; sie erben es vom Kurstag davor, damit sie an der Stelle stehen,
+ * an der sie im Kurs auch vorkommen (Projekttag 1 zwischen Tag 4 und Tag 5).
+ * Voraussetzung ist die Sortierung nach `position`, die der Import setzt.
+ */
+function einsortieren(tage: Kurstag[]): TagImSegment[] {
+  let letztes = 0
+  return tage.map((t) => {
+    if (t.segment) letztes = t.segment
+    return { ...t, segmentEffektiv: t.segment ?? letztes }
+  })
+}
+
+/**
  * Überschrift eines Segments: der Name aus dem Deck-Titel, etwa
  * "Segment 2 · Rechtliche Grundlagen". Solange kein Name vorliegt (Deck noch
  * nicht synchronisiert), bleibt es bei der Nummer.
  */
-function segmentUeberschrift(tage: Kurstag[], segment: number): string {
-  const name = tage.find((t) => (t.segment ?? 0) === segment && t.segment_titel)?.segment_titel
+function segmentUeberschrift(tage: TagImSegment[], segment: number): string {
+  const name = tage.find((t) => t.segmentEffektiv === segment && t.segment_titel)?.segment_titel
   if (!segment) return name ?? 'Ohne Segment'
   return name ? `Segment ${segment} · ${name}` : `Segment ${segment}`
 }
 
-function Kachel({ tag, vermittelt }: { tag: Kurstag; vermittelt: boolean }) {
+/**
+ * Farbgebung: Kurstage sind weiß, Projekttage teal, die Abschlussprüfung
+ * bernstein. Ist der Tag im gewählten Durchlauf vermittelt, wechselt er auf
+ * Grün, und zwar in der Abstufung seiner Art, damit die Unterscheidung auch im
+ * abgehakten Zustand bestehen bleibt. Das Häkchen trägt die Aussage mit, falls
+ * jemand die Farben schlecht unterscheidet.
+ */
+const FARBEN: Record<Kurstag['art'], { offen: string; erledigt: string }> = {
+  kurstag: {
+    offen: 'bg-white border-transparent',
+    erledigt: 'bg-ifm-green/12 border-ifm-green/45',
+  },
+  projekttag: {
+    offen: 'bg-ifm-lightblue border-ifm-lightblue',
+    erledigt: 'bg-ifm-green/30 border-ifm-green/60',
+  },
+  pruefung: {
+    offen: 'bg-ifm-yellow/25 border-ifm-yellow/40',
+    erledigt: 'bg-ifm-green/45 border-ifm-green/70',
+  },
+}
+
+function Kachel({ tag, vermittelt }: { tag: TagImSegment; vermittelt: boolean }) {
   const inhalt = (
     <>
       <span className="flex items-center gap-1.5 text-xs font-medium text-ifm-gray">
-        Tag {tag.nummer}
-        {vermittelt && <span className="text-ifm-green" title="bereits vermittelt">✓</span>}
+        {bezeichnung(tag)}
+        {vermittelt && (
+          <span className="text-ifm-green" title="bereits vermittelt">
+            ✓
+          </span>
+        )}
       </span>
-      <span className="mt-1 block font-medium text-ifm-blue">{tag.titel ?? 'Ohne Titel'}</span>
+      <span className="mt-1 block font-medium text-ifm-blue">
+        {tag.titel ?? tag.tagebuch_titel ?? 'Ohne Titel'}
+      </span>
       <span className="mt-3 block text-xs text-ifm-gray">
         {tag.deck_pfad
           ? `Stand ${formatiereDatum(tag.deck_aktualisiert_am)}`
-          : 'Noch kein Deck hochgeladen'}
+          : 'kein Deck, Themen im Tagebuch'}
       </span>
     </>
   )
 
-  // Der grüne Ton bleibt hell, damit der Text darauf lesbar bleibt; das Häkchen
-  // trägt die Aussage mit, falls jemand die Farbe schlecht unterscheidet.
-  const grund = vermittelt ? 'bg-ifm-green/12 border-ifm-green/45' : 'bg-white border-transparent'
-  const klassen = `block w-full text-left rounded-xl p-4 shadow-sm border ${grund}`
+  const farbe = FARBEN[tag.art] ?? FARBEN.kurstag
+  const klassen = `block w-full text-left rounded-xl p-4 shadow-sm border ${
+    vermittelt ? farbe.erledigt : farbe.offen
+  }`
 
   if (!tag.deck_pfad) {
-    return <div className={`${klassen} opacity-60`}>{inhalt}</div>
+    return <div className={klassen}>{inhalt}</div>
   }
 
   return (
     <button
-      onClick={() => deckOeffnen(tag.deck_pfad!, `Tag ${tag.nummer}`)}
+      onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag))}
       className={`${klassen} hover:border-ifm-red transition-colors cursor-pointer`}
     >
       {inhalt}
     </button>
   )
+}
+
+function bezeichnung(tag: Kurstag): string {
+  if (tag.art === 'pruefung') return 'Abschlussprüfung'
+  if (tag.art === 'projekttag') return `Projekttag ${tag.nummer}`
+  return `Tag ${tag.nummer}`
 }
 
 function formatiereDatum(iso: string | null): string {

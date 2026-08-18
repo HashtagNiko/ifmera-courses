@@ -2,11 +2,16 @@ import { supabase } from './supabase'
 
 export interface Kurstag {
   id: string
+  art: 'kurstag' | 'projekttag' | 'pruefung'
   nummer: number
+  /** Rang in der Kursreihenfolge; Projekttage sitzen zwischen den Kurstagen */
+  position: number | null
   segment: number | null
   /** Name des Segments aus dem Deck-Titel, z. B. "Rechtliche Grundlagen" */
   segment_titel: string | null
   titel: string | null
+  /** Titel aus der Themenuebersicht; bei Tagen ohne Deck der einzige Titel */
+  tagebuch_titel: string | null
   deck_pfad: string | null
   deck_aktualisiert_am: string | null
 }
@@ -38,8 +43,11 @@ export async function kurseLaden(): Promise<Kurs[]> {
 export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
   const { data, error } = await supabase
     .from('kurstage')
-    .select('id, nummer, segment, segment_titel, titel, deck_pfad, deck_aktualisiert_am')
+    // Eine einzelne Zeichenkette, nicht zusammengesetzt: supabase-js leitet die
+    // Typen aus dem Literal ab und verliert sie bei einer Verkettung.
+    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am')
     .eq('kurs_id', kursId)
+    .order('position', { nullsFirst: false })
     .order('nummer')
   if (error) throw new Error(error.message)
   return (data ?? []) as Kurstag[]
