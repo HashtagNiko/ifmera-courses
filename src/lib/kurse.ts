@@ -61,6 +61,44 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
 export async function deckLaden(deckPfad: string): Promise<string> {
   const { data, error } = await supabase.storage.from('decks').download(deckPfad)
   if (error || !data) throw new Error(error?.message ?? 'Deck konnte nicht geladen werden.')
-  const html = new Blob([await data.arrayBuffer()], { type: 'text/html;charset=utf-8' })
+  const html = new Blob([ergaenzeVollbild(await data.text())], { type: 'text/html;charset=utf-8' })
   return URL.createObjectURL(html)
 }
+
+/**
+ * Hängt dem Deck einen Vollbild-Knopf an.
+ *
+ * Die Decks bringen zwar einen Präsentationsmodus mit, der schaltet aber nur
+ * eine CSS-Klasse um; echtes Vollbild fordert er nie an. Das muss aus dem Deck
+ * selbst heraus geschehen, weil Browser Vollbild nur auf eine Nutzeraktion im
+ * betroffenen Dokument hin erlauben. Geändert wird nur diese Kopie im Browser,
+ * die Datei im Bucket und im Kursordner bleibt, wie sie ist.
+ */
+function ergaenzeVollbild(html: string): string {
+  const stelle = html.lastIndexOf('</body>')
+  return stelle === -1 ? html + VOLLBILD_KNOPF : html.slice(0, stelle) + VOLLBILD_KNOPF + html.slice(stelle)
+}
+
+const VOLLBILD_KNOPF = `
+<button id="ifmVollbild" title="Vollbild (auch F11)" style="position:fixed;top:10px;right:12px;
+z-index:9999;border:none;cursor:pointer;font:500 12.5px Ubuntu,Arial,sans-serif;background:#04211f;
+color:#faf5eb;border-radius:6px;padding:7px 12px;box-shadow:0 1px 4px rgba(0,0,0,.3);opacity:.85">
+⛶ Vollbild</button>
+<script>
+(function () {
+  var knopf = document.getElementById('ifmVollbild')
+  knopf.addEventListener('click', function () {
+    if (document.fullscreenElement) document.exitFullscreen()
+    else document.documentElement.requestFullscreen()
+  })
+  // Im Vollbild tritt der Knopf zurueck, damit er die Folie nicht stoert.
+  document.addEventListener('fullscreenchange', function () {
+    knopf.style.opacity = document.fullscreenElement ? '.12' : '.85'
+    knopf.textContent = document.fullscreenElement ? '⛶ Vollbild beenden' : '⛶ Vollbild'
+  })
+  knopf.addEventListener('mouseenter', function () { knopf.style.opacity = '.95' })
+  knopf.addEventListener('mouseleave', function () {
+    knopf.style.opacity = document.fullscreenElement ? '.12' : '.85'
+  })
+})()
+</script>`
