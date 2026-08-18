@@ -18,10 +18,13 @@ dist-ssr
 # MCP-Konfiguration enthaelt Secrets -> niemals committen
 .mcp.json
 
-# Environment / Secrets (u. a. der Service-Role-Key fuer den Deck-Sync)
+# Environment / Secrets
 .env
 .env.*
 !.env.example
+
+# Sitzung des Deck-Syncs (enthaelt ein Refresh-Token)
+.sync-session.json
 
 # Editor / OS
 .vscode/*

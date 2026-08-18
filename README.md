@@ -36,7 +36,7 @@ ist nur die Bequemlichkeit.
 
 1. `npm install`
 2. `.env.example` nach `.env` kopieren und ausfüllen (URL und Anon-Key aus dem
-   Supabase-Projekt, Service-Role-Key nur lokal für den Deck-Sync).
+   Supabase-Projekt, dazu die eigene Konto-Adresse für den Deck-Sync).
 3. Migration `supabase/migrations/20260818120000_kurs_tool_init.sql` im
    Supabase-SQL-Editor einspielen.
 4. `npm run sync:decks -- --dry` zeigt, welche Decks hochgeladen würden.
@@ -55,6 +55,13 @@ Nach dem Bauen der Decks:
 ```
 npm run sync:decks
 ```
+
+Beim ersten Lauf fragt das Skript einmal nach dem Supabase-Passwort und legt
+danach nur das erneuerbare Token in `.sync-session.json` ab; spätere Läufe
+fragen nicht mehr. Ein service_role-Key kommt bewusst nicht zum Einsatz: der
+würde sämtliche Sicherheitsregeln des Projekts umgehen, also auch die der
+Prüfungsdaten. Der Upload läuft unter der eigenen Anmeldung, erlaubt durch die
+RLS-Policies für Konten in `kurs_zugriff`.
 
 Das Skript vergleicht jede Trainer-Fassung per sha256 mit dem Stand im Bucket
 und lädt nur Geändertes hoch. Danach ist die neue Fassung sofort im Tool

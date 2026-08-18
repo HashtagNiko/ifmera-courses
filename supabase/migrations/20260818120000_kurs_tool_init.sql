@@ -70,8 +70,14 @@ create policy "kurse lesen" on public.kurse
 create policy "kurstage lesen" on public.kurstage
   for select to authenticated using (public.hat_kurszugriff());
 
--- Schreiben laeuft ueber den Sync mit service_role (umgeht RLS), deshalb
--- bekommen normale Sitzungen bewusst kein insert/update/delete.
+-- Schreiben macht der Deck-Sync unter Nikos eigener Anmeldung. Damit ist kein
+-- service_role-Key noetig, der saemtliche Regeln des Projekts umgehen wuerde.
+create policy "kurstage anlegen" on public.kurstage
+  for insert to authenticated with check (public.hat_kurszugriff());
+
+create policy "kurstage aendern" on public.kurstage
+  for update to authenticated
+  using (public.hat_kurszugriff()) with check (public.hat_kurszugriff());
 
 -- ---------------------------------------------------------------------------
 -- Privater Bucket fuer die Decks
@@ -84,6 +90,16 @@ create policy "decks lesen" on storage.objects
   for select to authenticated
   using (bucket_id = 'decks' and public.hat_kurszugriff());
 
+create policy "decks hochladen" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'decks' and public.hat_kurszugriff());
+
+-- fuer den Upload mit upsert: eine bestehende Datei wird ueberschrieben
+create policy "decks ersetzen" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'decks' and public.hat_kurszugriff())
+  with check (bucket_id = 'decks' and public.hat_kurszugriff());
+
 -- ---------------------------------------------------------------------------
 -- Startdaten
 -- ---------------------------------------------------------------------------
@@ -91,7 +107,14 @@ insert into public.kurse (slug, name)
 values ('weg', 'WEG-Kurs')
 on conflict (slug) do nothing;
 
--- Freigabe fuer Niko. Passt die E-Mail nicht zum Supabase-Konto, hier anpassen.
+-- Freigabe fuer Niko.
 insert into public.kurs_zugriff (trainer_id)
-select id from auth.users where lower(email) = lower('info@hausblick-fn.de')
+select id from auth.users where lower(email) = lower('nikolakrnic2@gmail.com')
 on conflict (trainer_id) do nothing;
+
+-- Kontrolle: muss genau 1 Zeile zeigen. Kommt 0 zurueck, ist das Konto im
+-- Prueftool unter einer anderen Adresse angelegt; dann die Adresse oben
+-- ersetzen und nur diesen letzten Block noch einmal ausfuehren.
+select u.email, z.angelegt_am
+from public.kurs_zugriff z
+join auth.users u on u.id = z.trainer_id;

@@ -5,29 +5,43 @@
  * Aufruf:  npm run sync:decks            (alle Kurstage pruefen)
  *          npm run sync:decks -- --dry   (nur zeigen, was passieren wuerde)
  *
+ * Angemeldet wird sich mit dem normalen Supabase-Konto, nicht mit einem
+ * service_role-Key: der wuerde alle Sicherheitsregeln des Projekts umgehen,
+ * also auch die der Pruefungsdaten. Beim ersten Lauf fragt das Skript einmal
+ * nach dem Passwort und legt die Sitzung in .sync-session.json ab; danach
+ * laeuft es ohne Rueckfrage. Hochladen darf nur, wer in kurs_zugriff steht,
+ * das setzen die RLS-Policies durch.
+ *
  * Verglichen wird per sha256: hochgeladen wird nur, was sich seit dem letzten
  * Lauf wirklich geaendert hat. Die Quelle bleibt der lokale Ordner, damit
  * OneDrive und Tool nicht auseinanderlaufen.
  */
 import { createHash } from 'node:crypto'
-import { readFile, readdir, stat } from 'node:fs/promises'
+import { readFile, readdir, stat, writeFile, open } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, basename, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createInterface } from 'node:readline'
 import { createClient } from '@supabase/supabase-js'
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const env = ladeEnv(join(WURZEL, '.env'))
 
 const SUPABASE_URL = env.VITE_SUPABASE_URL
-const SERVICE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
+const ANON_KEY = env.VITE_SUPABASE_ANON_KEY
+const EMAIL = env.SUPABASE_EMAIL
 const QUELLE = env.DECK_QUELLE
+const SITZUNGSDATEI = join(WURZEL, '.sync-session.json')
 const KURS_SLUG = 'weg'
 const BUCKET = 'decks'
 const TROCKEN = process.argv.includes('--dry')
 
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error('Fehlt in .env: VITE_SUPABASE_URL und/oder SUPABASE_SERVICE_ROLE_KEY')
+if (!SUPABASE_URL || !ANON_KEY) {
+  console.error('Fehlt in .env: VITE_SUPABASE_URL und/oder VITE_SUPABASE_ANON_KEY')
+  process.exit(1)
+}
+if (!EMAIL) {
+  console.error('Fehlt in .env: SUPABASE_EMAIL (die Adresse deines Supabase-Kontos)')
   process.exit(1)
 }
 if (!QUELLE || !existsSync(QUELLE)) {
@@ -35,9 +49,11 @@ if (!QUELLE || !existsSync(QUELLE)) {
   process.exit(1)
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false },
+const supabase = createClient(SUPABASE_URL, ANON_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
 })
+
+await anmelden()
 
 const { data: kurs, error: kursFehler } = await supabase
   .from('kurse')
@@ -46,7 +62,10 @@ const { data: kurs, error: kursFehler } = await supabase
   .single()
 
 if (kursFehler || !kurs) {
-  console.error(`Kurs "${KURS_SLUG}" nicht gefunden. Migration schon eingespielt?`)
+  console.error(
+    `Kurs "${KURS_SLUG}" nicht lesbar. Ist die Migration eingespielt und dein ` +
+      'Konto in kurs_zugriff eingetragen?',
+  )
   process.exit(1)
 }
 
@@ -122,6 +141,71 @@ console.log(
     : `Fertig: ${geladen} Deck(s) geladen, ${uebersprungen} unveraendert.`,
 )
 
+// ---------------------------------------------------------------------------
+
+/**
+ * Meldet sich an: zuerst mit der gespeicherten Sitzung, sonst per Passwort.
+ * Das Passwort landet nirgends auf der Platte, gespeichert wird nur das
+ * erneuerbare Token.
+ */
+async function anmelden() {
+  if (existsSync(SITZUNGSDATEI)) {
+    const gespeichert = JSON.parse(readFileSync(SITZUNGSDATEI, 'utf8'))
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: gespeichert.refresh_token,
+    })
+    if (!error && data.session) {
+      await merkeSitzung(data.session)
+      console.log(`Angemeldet als ${data.session.user.email} (gespeicherte Sitzung).`)
+      return
+    }
+    console.log('Gespeicherte Sitzung ist abgelaufen, bitte neu anmelden.')
+  }
+
+  const passwort =
+    process.env.SUPABASE_PASSWORT ?? (await frageVerdeckt(`Passwort fuer ${EMAIL}: `))
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: EMAIL,
+    password: passwort,
+  })
+  if (error || !data.session) {
+    console.error(`Anmeldung fehlgeschlagen: ${error?.message ?? 'unbekannter Fehler'}`)
+    process.exit(1)
+  }
+  await merkeSitzung(data.session)
+  console.log(`Angemeldet als ${data.session.user.email}.`)
+}
+
+/** Legt nur das Refresh-Token ab, damit der naechste Lauf nicht wieder fragt. */
+async function merkeSitzung(session) {
+  await writeFile(
+    SITZUNGSDATEI,
+    JSON.stringify({ refresh_token: session.refresh_token }, null, 2),
+    'utf8',
+  )
+}
+
+/** Fragt eine Eingabe ab, ohne sie im Terminal anzuzeigen. */
+function frageVerdeckt(frage) {
+  if (!process.stdin.isTTY) {
+    console.error(
+      'Kein Terminal fuer die Passworteingabe. Einmal "npm run sync:decks" in einer ' +
+        'normalen Konsole starten, danach genuegt die gespeicherte Sitzung.',
+    )
+    process.exit(1)
+  }
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true })
+    process.stdout.write(frage)
+    rl._writeToOutput = () => {}
+    rl.question('', (antwort) => {
+      rl.close()
+      process.stdout.write('\n')
+      resolve(antwort)
+    })
+  })
+}
+
 /** Liest eine .env ohne Zusatzpaket: KEY=VALUE je Zeile, # ist Kommentar. */
 function ladeEnv(pfad) {
   if (!existsSync(pfad)) return {}
@@ -136,7 +220,7 @@ function ladeEnv(pfad) {
 /**
  * Sammelt die Trainer-Fassungen: segmente/SegmentN/dist/TagX_SegmentN.html.
  * Der Unterordner "teilnehmer" bleibt aussen vor, im Tool brauchen wir nur die
- * Trainer-Fassung. Die Bucket-Struktur (…/trainer/…) laesst Platz dafuer.
+ * Trainer-Fassung. Die Bucket-Struktur (weg/trainer/...) laesst Platz dafuer.
  */
 async function findeDecks(segmenteOrdner) {
   const gefunden = []
@@ -163,12 +247,12 @@ async function findeDecks(segmenteOrdner) {
 /**
  * Holt den <title> aus dem Deck; dafuer reicht der Anfang der Datei.
  * Die Decks tragen dort die lange Form
- * "ifmera · Rechtliche Grundlagen · Tag 3 von 6 — Die Eigentuemerversammlung".
+ * "ifmera / Rechtliche Grundlagen / Tag 3 von 6 - Die Eigentuemerversammlung".
  * Fuer die Kacheln reicht das Thema am Ende.
  */
 async function leseTitel(pfad) {
   const puffer = Buffer.alloc(65536)
-  const datei = await import('node:fs/promises').then((m) => m.open(pfad, 'r'))
+  const datei = await open(pfad, 'r')
   try {
     const { bytesRead } = await datei.read(puffer, 0, puffer.length, 0)
     const kopf = puffer.subarray(0, bytesRead).toString('utf8')
