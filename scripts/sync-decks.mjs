@@ -1,9 +1,15 @@
 /**
- * Laedt geaenderte Trainer-Decks aus dem lokalen Kursordner in den privaten
+ * Laedt geaenderte Trainer-Decks aus den lokalen Kursordnern in den privaten
  * Supabase-Bucket "decks" und haelt die Tabelle public.kurstage aktuell.
  *
- * Aufruf:  npm run sync:decks            (alle Kurstage pruefen)
- *          npm run sync:decks -- --dry   (nur zeigen, was passieren wuerde)
+ * Aufruf:  npm run sync:decks                 (alle Kurse aus kurse.config.json)
+ *          npm run sync:decks -- --kurs hg    (nur ein Kurs)
+ *          npm run sync:decks -- --dry        (nur zeigen, was passieren wuerde)
+ *          npm run sync:decks -- --force      (auch unveraenderte Decks neu laden)
+ *
+ * Welche Kurse es gibt, steht in kurse.config.json; wo sie liegen, sagt
+ * KURS_WURZEL in der .env. So enthaelt das oeffentliche Repo keine Pfade von
+ * Nikos Rechner.
  *
  * Angemeldet wird sich mit dem normalen Supabase-Konto, nicht mit einem
  * service_role-Key: der wuerde alle Sicherheitsregeln des Projekts umgehen,
@@ -30,14 +36,14 @@ const env = ladeEnv(join(WURZEL, '.env'))
 const SUPABASE_URL = env.VITE_SUPABASE_URL
 const ANON_KEY = env.VITE_SUPABASE_ANON_KEY
 const EMAIL = env.SUPABASE_EMAIL
-const QUELLE = env.DECK_QUELLE
+const KURS_WURZEL = env.KURS_WURZEL
 const SITZUNGSDATEI = join(WURZEL, '.sync-session.json')
-const KURS_SLUG = 'weg'
 const BUCKET = 'decks'
 const TROCKEN = process.argv.includes('--dry')
 // laedt auch unveraenderte Decks neu; noetig, wenn sich nicht die Datei, sondern
 // das aendert, was wir aus ihr herauslesen
 const ERZWINGEN = process.argv.includes('--force')
+const NUR_KURS = argWert('--kurs')
 
 if (!SUPABASE_URL || !ANON_KEY) {
   console.error('Fehlt in .env: VITE_SUPABASE_URL und/oder VITE_SUPABASE_ANON_KEY')
@@ -47,8 +53,19 @@ if (!EMAIL) {
   console.error('Fehlt in .env: SUPABASE_EMAIL (die Adresse deines Supabase-Kontos)')
   process.exit(1)
 }
-if (!QUELLE || !existsSync(QUELLE)) {
-  console.error(`DECK_QUELLE nicht gefunden: ${QUELLE}`)
+if (!KURS_WURZEL || !existsSync(KURS_WURZEL)) {
+  console.error(`KURS_WURZEL nicht gefunden: ${KURS_WURZEL}`)
+  process.exit(1)
+}
+
+const alleKurse = JSON.parse(readFileSync(join(WURZEL, 'kurse.config.json'), 'utf8'))
+const kurse = NUR_KURS ? alleKurse.filter((k) => k.slug === NUR_KURS) : alleKurse
+if (kurse.length === 0) {
+  console.error(
+    NUR_KURS
+      ? `Kurs "${NUR_KURS}" steht nicht in kurse.config.json.`
+      : 'kurse.config.json enthaelt keine Kurse.',
+  )
   process.exit(1)
 }
 
@@ -58,99 +75,134 @@ const supabase = createClient(SUPABASE_URL, ANON_KEY, {
 
 await anmelden()
 
-const { data: kurs, error: kursFehler } = await supabase
-  .from('kurse')
-  .select('id')
-  .eq('slug', KURS_SLUG)
-  .single()
-
-if (kursFehler || !kurs) {
-  console.error(
-    `Kurs "${KURS_SLUG}" nicht lesbar. Ist die Migration eingespielt und dein ` +
-      'Konto in kurs_zugriff eingetragen?',
-  )
-  process.exit(1)
+for (const kurs of kurse) {
+  await synchronisiereKurs(kurs)
 }
 
-const decks = await findeDecks(join(QUELLE, 'segmente'))
-if (decks.length === 0) {
-  console.error(`Keine Decks unter ${join(QUELLE, 'segmente')} gefunden.`)
-  process.exit(1)
-}
-console.log(`${decks.length} Trainer-Decks gefunden.`)
+/** Gleicht einen Kurs ab: Decks suchen, Neues hochladen, Tabelle nachziehen. */
+async function synchronisiereKurs(kurs) {
+  const ordner = join(KURS_WURZEL, kurs.ordner)
+  console.log(`\n[${kurs.slug}] ${kurs.name}`)
 
-const { data: bestand } = await supabase
-  .from('kurstage')
-  .select('nummer, deck_hash')
-  .eq('kurs_id', kurs.id)
-
-const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z.deck_hash]))
-
-let geladen = 0
-let uebersprungen = 0
-
-for (const deck of decks.sort((a, b) => a.nummer - b.nummer)) {
-  const inhalt = await readFile(deck.pfad)
-  const hash = createHash('sha256').update(inhalt).digest('hex')
-
-  const zielPfad = `${KURS_SLUG}/trainer/${basename(deck.pfad)}`
-  // Die Datei laden wir nur bei echter Aenderung; Titel und Segmentname
-  // schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
-  const dateiNeu = ERZWINGEN || bekannt.get(deck.nummer) !== hash
-
-  if (dateiNeu) {
-    console.log(`  Tag ${deck.nummer}: geaendert -> ${zielPfad} (${mb(inhalt.length)})`)
+  if (!existsSync(ordner)) {
+    console.log(`  Ordner fehlt (${ordner}), uebersprungen.`)
+    return
   }
 
-  if (TROCKEN) {
-    dateiNeu ? geladen++ : uebersprungen++
-    continue
+  const decks = await findeDecks(join(ordner, 'segmente'))
+  if (decks.length === 0) {
+    console.log('  Noch keine gebauten Decks gefunden, uebersprungen.')
+    return
   }
+  console.log(`  ${decks.length} Trainer-Decks gefunden.`)
 
-  if (dateiNeu) {
-    const { error: uploadFehler } = await supabase.storage
-      .from(BUCKET)
-      .upload(zielPfad, inhalt, { contentType: 'text/html; charset=utf-8', upsert: true })
+  const kursId = await kursAnlegen(kurs)
+  if (!kursId) return
 
-    if (uploadFehler) {
-      console.error(`  Fehler beim Upload von Tag ${deck.nummer}: ${uploadFehler.message}`)
+  const { data: bestand } = await supabase
+    .from('kurstage')
+    .select('nummer, deck_hash')
+    .eq('kurs_id', kursId)
+
+  const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z.deck_hash]))
+
+  let geladen = 0
+  let uebersprungen = 0
+
+  for (const deck of decks.sort((a, b) => a.nummer - b.nummer)) {
+    const inhalt = await readFile(deck.pfad)
+    const hash = createHash('sha256').update(inhalt).digest('hex')
+    const zielPfad = `${kurs.slug}/trainer/${basename(deck.pfad)}`
+    // Die Datei laden wir nur bei echter Aenderung; Titel und Segmentname
+    // schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
+    const dateiNeu = ERZWINGEN || bekannt.get(deck.nummer) !== hash
+
+    if (dateiNeu) {
+      console.log(`  Tag ${deck.nummer}: geaendert -> ${zielPfad} (${mb(inhalt.length)})`)
+    }
+
+    if (TROCKEN) {
+      dateiNeu ? geladen++ : uebersprungen++
+      continue
+    }
+
+    if (dateiNeu) {
+      const { error: uploadFehler } = await supabase.storage
+        .from(BUCKET)
+        .upload(zielPfad, inhalt, { contentType: 'text/html; charset=utf-8', upsert: true })
+
+      if (uploadFehler) {
+        console.error(`  Fehler beim Upload von Tag ${deck.nummer}: ${uploadFehler.message}`)
+        process.exitCode = 1
+        continue
+      }
+    }
+
+    const zeile = {
+      kurs_id: kursId,
+      nummer: deck.nummer,
+      segment: deck.segment,
+      segment_titel: deck.segmentTitel,
+      titel: deck.titel,
+      deck_pfad: zielPfad,
+      deck_hash: hash,
+      deck_groesse: inhalt.length,
+    }
+    // Das Stand-Datum nur anfassen, wenn die Datei wirklich neu ist.
+    if (dateiNeu) zeile.deck_aktualisiert_am = new Date().toISOString()
+
+    const { error: schreibFehler } = await supabase
+      .from('kurstage')
+      .upsert(zeile, { onConflict: 'kurs_id,nummer' })
+
+    if (schreibFehler) {
+      console.error(`  Fehler beim Eintrag von Tag ${deck.nummer}: ${schreibFehler.message}`)
       process.exitCode = 1
       continue
     }
+    dateiNeu ? geladen++ : uebersprungen++
   }
 
-  const zeile = {
-    kurs_id: kurs.id,
-    nummer: deck.nummer,
-    segment: deck.segment,
-    segment_titel: deck.segmentTitel,
-    titel: deck.titel,
-    deck_pfad: zielPfad,
-    deck_hash: hash,
-    deck_groesse: inhalt.length,
-  }
-  // Das Stand-Datum nur anfassen, wenn die Datei wirklich neu ist.
-  if (dateiNeu) zeile.deck_aktualisiert_am = new Date().toISOString()
-
-  const { error: schreibFehler } = await supabase
-    .from('kurstage')
-    .upsert(zeile, { onConflict: 'kurs_id,nummer' })
-
-  if (schreibFehler) {
-    console.error(`  Fehler beim Eintrag von Tag ${deck.nummer}: ${schreibFehler.message}`)
-    process.exitCode = 1
-    continue
-  }
-  dateiNeu ? geladen++ : uebersprungen++
+  console.log(
+    TROCKEN
+      ? `  Probelauf: ${geladen} Deck(s) waeren geladen worden, ${uebersprungen} unveraendert.`
+      : `  Fertig: ${geladen} Deck(s) geladen, ${uebersprungen} unveraendert.`,
+  )
 }
 
-console.log(
-  TROCKEN
-    ? `Probelauf: ${geladen} Deck(s) waeren geladen worden, ${uebersprungen} unveraendert.`
-    : `Fertig: ${geladen} Deck(s) geladen, ${uebersprungen} unveraendert.`,
-)
+/**
+ * Legt den Kurs an, falls er noch fehlt, und gibt seine Id zurueck. Angelegt
+ * wird erst, wenn es auch Decks gibt; so taucht im Dashboard kein leerer
+ * Reiter fuer einen Kurs auf, der noch gar nicht gebaut ist.
+ */
+async function kursAnlegen(kurs) {
+  if (TROCKEN) {
+    const { data } = await supabase.from('kurse').select('id').eq('slug', kurs.slug).maybeSingle()
+    if (!data) console.log('  (Probelauf: der Kurs wuerde neu angelegt)')
+    return data?.id ?? null
+  }
+
+  const { data, error } = await supabase
+    .from('kurse')
+    .upsert({ slug: kurs.slug, name: kurs.name }, { onConflict: 'slug' })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    console.error(`  Kurs konnte nicht angelegt werden: ${error?.message ?? 'unbekannt'}`)
+    process.exitCode = 1
+    return null
+  }
+  return data.id
+}
 
 // ---------------------------------------------------------------------------
+
+/** Liest den Wert eines Aufrufparameters, etwa --kurs hg. */
+function argWert(name) {
+  const i = process.argv.indexOf(name)
+  return i !== -1 ? process.argv[i + 1] : null
+}
 
 /**
  * Meldet sich an: zuerst mit der gespeicherten Sitzung, sonst per Passwort.
@@ -229,9 +281,10 @@ function ladeEnv(pfad) {
 /**
  * Sammelt die Trainer-Fassungen: segmente/SegmentN/dist/TagX_SegmentN.html.
  * Der Unterordner "teilnehmer" bleibt aussen vor, im Tool brauchen wir nur die
- * Trainer-Fassung. Die Bucket-Struktur (weg/trainer/...) laesst Platz dafuer.
+ * Trainer-Fassung; die Teilnehmerunterlagen laufen weiter ueber Google Drive.
  */
 async function findeDecks(segmenteOrdner) {
+  if (!existsSync(segmenteOrdner)) return []
   const gefunden = []
   for (const segment of await readdir(segmenteOrdner)) {
     const distOrdner = join(segmenteOrdner, segment, 'dist')
