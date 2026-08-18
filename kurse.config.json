@@ -1,4 +1,13 @@
 [
-  { "slug": "weg", "name": "WEG-Kurs", "ordner": "10_WEG-Kurs" },
-  { "slug": "hg", "name": "H&G-Kurs", "ordner": "50_H&G-Kurs" }
+  {
+    "slug": "weg",
+    "name": "WEG-Kurs",
+    "ordner": "10_WEG-Kurs",
+    "tagebuch": "00_WEG_Projekt/Themenübersicht Trainertagebuch - WEG-Kurs.docx"
+  },
+  {
+    "slug": "hg",
+    "name": "H&G-Kurs",
+    "ordner": "50_H&G-Kurs"
+  }
 ]

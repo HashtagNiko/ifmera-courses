@@ -99,10 +99,13 @@ async function synchronisiereKurs(kurs) {
   const kursId = await kursAnlegen(kurs)
   if (!kursId) return
 
+  // Nur Kurstage: Projekttage tragen dieselben Nummern (Projekttag 1 neben
+  // Kurstag 1) und wuerden die Pruefsummen sonst ueberschreiben.
   const { data: bestand } = await supabase
     .from('kurstage')
     .select('nummer, deck_hash')
     .eq('kurs_id', kursId)
+    .eq('art', 'kurstag')
 
   const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z.deck_hash]))
 
@@ -140,6 +143,9 @@ async function synchronisiereKurs(kurs) {
 
     const zeile = {
       kurs_id: kursId,
+      // Projekttage und Pruefung kommen aus dem Trainertagebuch-Import und
+      // haben kein Deck; der Sync schreibt ausschliesslich Kurstage.
+      art: 'kurstag',
       nummer: deck.nummer,
       segment: deck.segment,
       segment_titel: deck.segmentTitel,
@@ -153,7 +159,7 @@ async function synchronisiereKurs(kurs) {
 
     const { error: schreibFehler } = await supabase
       .from('kurstage')
-      .upsert(zeile, { onConflict: 'kurs_id,nummer' })
+      .upsert(zeile, { onConflict: 'kurs_id,art,nummer' })
 
     if (schreibFehler) {
       console.error(`  Fehler beim Eintrag von Tag ${deck.nummer}: ${schreibFehler.message}`)

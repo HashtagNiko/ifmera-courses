@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../lib/AuthContext'
 import { deckOeffnen } from '../lib/deckOeffnen'
+import Kopfzeile from '../components/Kopfzeile'
 import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse'
 
 export default function DashboardPage() {
-  const { signOut, user } = useAuth()
   const [kurse, setKurse] = useState<Kurs[]>([])
   const [aktiverKurs, setAktiverKurs] = useState<string | null>(null)
   const [tage, setTage] = useState<Kurstag[]>([])
@@ -24,7 +23,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!aktiverKurs) return
     kurstageLaden(aktiverKurs)
-      .then(setTage)
+      // Projekttage und Abschlusspruefung haben kein Deck; sie stehen im
+      // Trainertagebuch, hier waeren sie nur leere Kacheln.
+      .then((alle) => setTage(alle.filter((t) => t.deck_pfad)))
       .catch((e: Error) => setFehler(e.message))
   }, [aktiverKurs])
 
@@ -32,18 +33,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full bg-ifm-cream">
-      <header className="bg-white border-b border-ifm-lightblue">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
-          <img src="/logo.png" alt="ifmera academy" className="h-8 w-auto" />
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-ifm-blue">Kurstage</h1>
-            <p className="text-xs text-ifm-gray">{user?.email}</p>
-          </div>
-          <button onClick={signOut} className="text-sm text-ifm-gray hover:text-ifm-blue">
-            Abmelden
-          </button>
-        </div>
-      </header>
+      <Kopfzeile titel="Kurstage" />
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {kurse.length > 1 && (
