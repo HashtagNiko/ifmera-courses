@@ -87,18 +87,40 @@ color:#faf5eb;border-radius:6px;padding:7px 12px;box-shadow:0 1px 4px rgba(0,0,0
 <script>
 (function () {
   var knopf = document.getElementById('ifmVollbild')
+  var frist = null
+
   knopf.addEventListener('click', function () {
     if (document.fullscreenElement) document.exitFullscreen()
     else document.documentElement.requestFullscreen()
   })
-  // Im Vollbild tritt der Knopf zurueck, damit er die Folie nicht stoert.
+
+  /**
+   * Im Vollbild verschwindet der Knopf vollstaendig. Der Bildschirm wird im
+   * Kurs geteilt, und was hier stehen bleibt, sehen die Teilnehmer mit.
+   * Zurueck kommt er nur, wenn die Maus in die obere rechte Ecke faehrt.
+   */
+  function verstecken() {
+    knopf.style.opacity = '0'
+    knopf.style.pointerEvents = 'none'
+  }
+  function zeigen() {
+    knopf.style.opacity = '.85'
+    knopf.style.pointerEvents = 'auto'
+  }
+
   document.addEventListener('fullscreenchange', function () {
-    knopf.style.opacity = document.fullscreenElement ? '.12' : '.85'
     knopf.textContent = document.fullscreenElement ? '⛶ Vollbild beenden' : '⛶ Vollbild'
+    if (document.fullscreenElement) verstecken()
+    else zeigen()
   })
-  knopf.addEventListener('mouseenter', function () { knopf.style.opacity = '.95' })
-  knopf.addEventListener('mouseleave', function () {
-    knopf.style.opacity = document.fullscreenElement ? '.12' : '.85'
+
+  document.addEventListener('mousemove', function (e) {
+    if (!document.fullscreenElement) return
+    var inDerEcke = e.clientY < 90 && e.clientX > window.innerWidth - 220
+    if (!inDerEcke) return
+    zeigen()
+    window.clearTimeout(frist)
+    frist = window.setTimeout(verstecken, 2500)
   })
 })()
 </script>`
