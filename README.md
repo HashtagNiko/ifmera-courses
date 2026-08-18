@@ -8,3 +8,6 @@ Dazu müssen wahrscheinlich ersteinmal alle Decks (Finale Versionen) auf Github 
 Als erstes sollten wir festlegen, welche Dateien in das repo kommen und dann ein gitignore erstellen, das die anderen Dateien lokal hält.
 Danach testen wir das ganze mit dem WEG-Kurs.
 Bitte einfache schritte und erstmal nur kurze Rückmeldungen im chat, wie wir vorgehen müssen.
+
+##Design:
+Es soll wie das Exams-Tool aussehen, aber ich habe mir noch keine gedanken gemacht, wie das UI für mich als Trainer aussieht. Deswegen müssen wir hier erst Brainstormen.
