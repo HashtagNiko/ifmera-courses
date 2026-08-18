@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies / Build
+node_modules
+dist
+dist-ssr
+*.local
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# MCP-Konfiguration enthaelt Secrets -> niemals committen
+.mcp.json
+
+# Environment / Secrets (u. a. der Service-Role-Key fuer den Deck-Sync)
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Kursmaterial gehoert NICHT in dieses Repo.
+# Das Repo ist oeffentlich und GitHub Pages liefert jede Datei ohne Login aus.
+# Decks, Anlagen und Skripte liegen lokal in OneDrive und werden ueber
+# scripts/sync-decks.mjs in den privaten Supabase-Bucket geladen.
+# ---------------------------------------------------------------------------
+decks/
+segmente/
+anlagen/
+*.pptx
+*.docx
+*.xlsx
+*.pdf
+# Ausnahme: die Deck-Engine baut HTML; auch das bleibt draussen
+Tag*_Segment*.html
