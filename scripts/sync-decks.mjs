@@ -35,6 +35,9 @@ const SITZUNGSDATEI = join(WURZEL, '.sync-session.json')
 const KURS_SLUG = 'weg'
 const BUCKET = 'decks'
 const TROCKEN = process.argv.includes('--dry')
+// laedt auch unveraenderte Decks neu; noetig, wenn sich nicht die Datei, sondern
+// das aendert, was wir aus ihr herauslesen
+const ERZWINGEN = process.argv.includes('--force')
 
 if (!SUPABASE_URL || !ANON_KEY) {
   console.error('Fehlt in .env: VITE_SUPABASE_URL und/oder VITE_SUPABASE_ANON_KEY')
@@ -90,49 +93,55 @@ for (const deck of decks.sort((a, b) => a.nummer - b.nummer)) {
   const inhalt = await readFile(deck.pfad)
   const hash = createHash('sha256').update(inhalt).digest('hex')
 
-  if (bekannt.get(deck.nummer) === hash) {
-    uebersprungen++
-    continue
-  }
-
   const zielPfad = `${KURS_SLUG}/trainer/${basename(deck.pfad)}`
-  console.log(`  Tag ${deck.nummer}: geaendert -> ${zielPfad} (${mb(inhalt.length)})`)
+  // Die Datei laden wir nur bei echter Aenderung; Titel und Segmentname
+  // schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
+  const dateiNeu = ERZWINGEN || bekannt.get(deck.nummer) !== hash
+
+  if (dateiNeu) {
+    console.log(`  Tag ${deck.nummer}: geaendert -> ${zielPfad} (${mb(inhalt.length)})`)
+  }
 
   if (TROCKEN) {
-    geladen++
+    dateiNeu ? geladen++ : uebersprungen++
     continue
   }
 
-  const { error: uploadFehler } = await supabase.storage
-    .from(BUCKET)
-    .upload(zielPfad, inhalt, { contentType: 'text/html; charset=utf-8', upsert: true })
+  if (dateiNeu) {
+    const { error: uploadFehler } = await supabase.storage
+      .from(BUCKET)
+      .upload(zielPfad, inhalt, { contentType: 'text/html; charset=utf-8', upsert: true })
 
-  if (uploadFehler) {
-    console.error(`  Fehler beim Upload von Tag ${deck.nummer}: ${uploadFehler.message}`)
-    process.exitCode = 1
-    continue
+    if (uploadFehler) {
+      console.error(`  Fehler beim Upload von Tag ${deck.nummer}: ${uploadFehler.message}`)
+      process.exitCode = 1
+      continue
+    }
   }
 
-  const { error: schreibFehler } = await supabase.from('kurstage').upsert(
-    {
-      kurs_id: kurs.id,
-      nummer: deck.nummer,
-      segment: deck.segment,
-      titel: deck.titel,
-      deck_pfad: zielPfad,
-      deck_hash: hash,
-      deck_groesse: inhalt.length,
-      deck_aktualisiert_am: new Date().toISOString(),
-    },
-    { onConflict: 'kurs_id,nummer' },
-  )
+  const zeile = {
+    kurs_id: kurs.id,
+    nummer: deck.nummer,
+    segment: deck.segment,
+    segment_titel: deck.segmentTitel,
+    titel: deck.titel,
+    deck_pfad: zielPfad,
+    deck_hash: hash,
+    deck_groesse: inhalt.length,
+  }
+  // Das Stand-Datum nur anfassen, wenn die Datei wirklich neu ist.
+  if (dateiNeu) zeile.deck_aktualisiert_am = new Date().toISOString()
+
+  const { error: schreibFehler } = await supabase
+    .from('kurstage')
+    .upsert(zeile, { onConflict: 'kurs_id,nummer' })
 
   if (schreibFehler) {
     console.error(`  Fehler beim Eintrag von Tag ${deck.nummer}: ${schreibFehler.message}`)
     process.exitCode = 1
     continue
   }
-  geladen++
+  dateiNeu ? geladen++ : uebersprungen++
 }
 
 console.log(
@@ -237,7 +246,7 @@ async function findeDecks(segmenteOrdner) {
         pfad: voll,
         nummer: Number(treffer[1]),
         segment: Number(treffer[2]),
-        titel: await leseTitel(voll),
+        ...(await leseTitel(voll)),
       })
     }
   }
@@ -247,8 +256,9 @@ async function findeDecks(segmenteOrdner) {
 /**
  * Holt den <title> aus dem Deck; dafuer reicht der Anfang der Datei.
  * Die Decks tragen dort die lange Form
- * "ifmera / Rechtliche Grundlagen / Tag 3 von 6 - Die Eigentuemerversammlung".
- * Fuer die Kacheln reicht das Thema am Ende.
+ * "ifmera · Rechtliche Grundlagen · Tag 3 von 6 — Die Eigentuemerversammlung",
+ * also Marke, Segmentname, Zaehlung und Thema. Wir holen daraus den
+ * Segmentnamen fuer die Ueberschrift und das Thema fuer die Kachel.
  */
 async function leseTitel(pfad) {
   const puffer = Buffer.alloc(65536)
@@ -257,14 +267,14 @@ async function leseTitel(pfad) {
     const { bytesRead } = await datei.read(puffer, 0, puffer.length, 0)
     const kopf = puffer.subarray(0, bytesRead).toString('utf8')
     const treffer = kopf.match(/<title>([^<]*)<\/title>/i)
-    return treffer ? kuerzeTitel(treffer[1]) : null
+    return treffer ? zerlegeTitel(treffer[1]) : { titel: null, segmentTitel: null }
   } finally {
     await datei.close()
   }
 }
 
-/** Macht aus dem langen Deck-Titel das Thema und loest HTML-Entities auf. */
-function kuerzeTitel(roh) {
+/** Zerlegt den Deck-Titel in Segmentname und Thema, loest HTML-Entities auf. */
+function zerlegeTitel(roh) {
   const entschluesselt = roh
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -272,8 +282,16 @@ function kuerzeTitel(roh) {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .trim()
+
+  // Der mittlere Abschnitt ist der Segmentname; ohne diesen Aufbau bleibt er leer.
+  const abschnitte = entschluesselt.split('·').map((s) => s.trim())
+  const segmentTitel = abschnitte.length >= 3 ? abschnitte[1] : null
+
+  // Das Thema steht hinter dem letzten Gedankenstrich.
   const teile = entschluesselt.split(/\s[—–-]\s/)
-  return (teile.length > 1 ? teile[teile.length - 1] : entschluesselt).trim() || null
+  const titel = (teile.length > 1 ? teile[teile.length - 1] : entschluesselt).trim() || null
+
+  return { titel, segmentTitel }
 }
 
 function mb(bytes) {

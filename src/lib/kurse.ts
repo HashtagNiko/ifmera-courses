@@ -4,6 +4,8 @@ export interface Kurstag {
   id: string
   nummer: number
   segment: number | null
+  /** Name des Segments aus dem Deck-Titel, z. B. "Rechtliche Grundlagen" */
+  segment_titel: string | null
   titel: string | null
   deck_pfad: string | null
   deck_aktualisiert_am: string | null
@@ -36,7 +38,7 @@ export async function kurseLaden(): Promise<Kurs[]> {
 export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
   const { data, error } = await supabase
     .from('kurstage')
-    .select('id, nummer, segment, titel, deck_pfad, deck_aktualisiert_am')
+    .select('id, nummer, segment, segment_titel, titel, deck_pfad, deck_aktualisiert_am')
     .eq('kurs_id', kursId)
     .order('nummer')
   if (error) throw new Error(error.message)
@@ -44,14 +46,21 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
 }
 
 /**
- * Erzeugt eine zeitlich begrenzte URL für ein Deck im privaten Bucket.
- * Ohne gültige Sitzung und ohne Freigabe liefert Supabase hier einen Fehler,
- * die Decks sind also nicht über eine rateable URL erreichbar.
+ * Lädt ein Deck aus dem privaten Bucket und gibt eine lokale Adresse darauf
+ * zurück (blob:).
+ *
+ * Der Umweg ist nötig, weil Supabase HTML immer als `text/plain` ausliefert,
+ * egal was beim Upload angegeben wird; das ist deren Schutz gegen fremden Code
+ * auf der geteilten supabase.co-Domain. Über die eigene Adresse geöffnet stimmt
+ * der Typ, und das Trainer-Cockpit des Decks funktioniert, weil Deck und
+ * Cockpit dann dieselbe Herkunft haben.
+ *
+ * Ohne gültige Sitzung und ohne Freigabe verweigert Supabase den Download, die
+ * Decks bleiben also geschützt.
  */
-export async function deckUrl(deckPfad: string, sekunden = 3600): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from('decks')
-    .createSignedUrl(deckPfad, sekunden)
+export async function deckLaden(deckPfad: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('decks').download(deckPfad)
   if (error || !data) throw new Error(error?.message ?? 'Deck konnte nicht geladen werden.')
-  return data.signedUrl
+  const html = new Blob([await data.arrayBuffer()], { type: 'text/html;charset=utf-8' })
+  return URL.createObjectURL(html)
 }

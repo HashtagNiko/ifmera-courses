@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import { deckOeffnen } from '../lib/deckOeffnen'
 import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse'
 
 export default function DashboardPage() {
@@ -77,7 +77,7 @@ export default function DashboardPage() {
         {segmente.map((seg) => (
           <section key={seg} className="mb-8">
             <h2 className="text-sm font-bold uppercase tracking-wide text-ifm-gray mb-3">
-              Segment {seg || '–'}
+              {segmentUeberschrift(tage, seg)}
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {tage
@@ -93,6 +93,17 @@ export default function DashboardPage() {
   )
 }
 
+/**
+ * Überschrift eines Segments: der Name aus dem Deck-Titel, etwa
+ * "Segment 2 · Rechtliche Grundlagen". Solange kein Name vorliegt (Deck noch
+ * nicht synchronisiert), bleibt es bei der Nummer.
+ */
+function segmentUeberschrift(tage: Kurstag[], segment: number): string {
+  const name = tage.find((t) => (t.segment ?? 0) === segment && t.segment_titel)?.segment_titel
+  if (!segment) return name ?? 'Ohne Segment'
+  return name ? `Segment ${segment} · ${name}` : `Segment ${segment}`
+}
+
 function Kachel({ tag }: { tag: Kurstag }) {
   const inhalt = (
     <>
@@ -106,16 +117,19 @@ function Kachel({ tag }: { tag: Kurstag }) {
     </>
   )
 
-  const klassen = 'block rounded-xl bg-white p-4 shadow-sm border border-transparent'
+  const klassen = 'block w-full text-left rounded-xl bg-white p-4 shadow-sm border border-transparent'
 
   if (!tag.deck_pfad) {
     return <div className={`${klassen} opacity-60`}>{inhalt}</div>
   }
 
   return (
-    <Link to={`/deck/${tag.id}`} className={`${klassen} hover:border-ifm-red transition-colors`}>
+    <button
+      onClick={() => deckOeffnen(tag.deck_pfad!, `Tag ${tag.nummer}`)}
+      className={`${klassen} hover:border-ifm-red transition-colors cursor-pointer`}
+    >
       {inhalt}
-    </Link>
+    </button>
   )
 }
 
