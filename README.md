@@ -9,5 +9,5 @@ Als erstes sollten wir festlegen, welche Dateien in das repo kommen und dann ein
 Danach testen wir das ganze mit dem WEG-Kurs.
 Bitte einfache schritte und erstmal nur kurze Rückmeldungen im chat, wie wir vorgehen müssen.
 
-##Design:
+## Design:
 Es soll wie das Exams-Tool aussehen, aber ich habe mir noch keine gedanken gemacht, wie das UI für mich als Trainer aussieht. Deswegen müssen wir hier erst Brainstormen.
