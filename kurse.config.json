@@ -10,5 +10,10 @@
     "name": "H&G-Kurs",
     "ordner": "50_H&G-Kurs",
     "tagebuch": "40_H&G_Projekt/Themenübersicht Trainertagebuch - H&G-Kurs.docx"
+  },
+  {
+    "slug": "hg-kompakt",
+    "name": "H&G kompakt",
+    "ordner": "50_H&G-Kurs/kompakt"
   }
 ]
