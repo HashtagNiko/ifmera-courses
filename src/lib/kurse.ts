@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, supabaseAnonKey, supabaseUrl } from './supabase'
 
 export interface Kurstag {
   id: string
@@ -65,11 +65,24 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
  *
  * Ohne gültige Sitzung und ohne Freigabe verweigert Supabase den Download, die
  * Decks bleiben also geschützt.
+ *
+ * Geladen wird am Cache vorbei: Supabase liefert Objekte mit einer Cache-Dauer
+ * aus (bis 04.10.2026 eine Stunde), und der Browser zeigte nach einem Update
+ * noch das alte Deck. `cache: 'no-store'` umgeht den Browser-Cache, der
+ * Zeitstempel in der Adresse den CDN-Cache; deshalb nicht mehr
+ * `storage.download()`, das beides nicht kennt.
  */
 export async function deckLaden(deckPfad: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('decks').download(deckPfad)
-  if (error || !data) throw new Error(error?.message ?? 'Deck konnte nicht geladen werden.')
-  const html = new Blob([ergaenzeVollbild(await data.text())], { type: 'text/html;charset=utf-8' })
+  const { data: sitzung } = await supabase.auth.getSession()
+  const token = sitzung.session?.access_token
+  if (!token || !supabaseUrl || !supabaseAnonKey) throw new Error('Nicht angemeldet.')
+  const pfad = deckPfad.split('/').map(encodeURIComponent).join('/')
+  const antwort = await fetch(`${supabaseUrl}/storage/v1/object/decks/${pfad}?v=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnonKey },
+    cache: 'no-store',
+  })
+  if (!antwort.ok) throw new Error(`Deck konnte nicht geladen werden (${antwort.status}).`)
+  const html = new Blob([ergaenzeVollbild(await antwort.text())], { type: 'text/html;charset=utf-8' })
   return URL.createObjectURL(html)
 }
 

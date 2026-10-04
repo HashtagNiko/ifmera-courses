@@ -130,9 +130,17 @@ async function synchronisiereKurs(kurs) {
     }
 
     if (dateiNeu) {
+      // cacheControl '0': Ohne Angabe liefert Supabase die Datei mit
+      // "max-age=3600" aus, und Browser wie CDN halten ein neues Deck dann bis zu
+      // einer Stunde zurueck. Niko sah am 04.10.2026 nach einem Update noch die
+      // alte Fassung. Die App laedt zusaetzlich mit cache: 'no-store'.
       const { error: uploadFehler } = await supabase.storage
         .from(BUCKET)
-        .upload(zielPfad, inhalt, { contentType: 'text/html; charset=utf-8', upsert: true })
+        .upload(zielPfad, inhalt, {
+          contentType: 'text/html; charset=utf-8',
+          upsert: true,
+          cacheControl: '0',
+        })
 
       if (uploadFehler) {
         console.error(`  Fehler beim Upload von Tag ${deck.nummer}: ${uploadFehler.message}`)
