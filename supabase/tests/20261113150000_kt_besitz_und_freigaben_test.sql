@@ -38,6 +38,9 @@ select set_config('kt.fremd',   '00000000-0000-4000-8000-0000000000f1', true);
 select set_config('kt.weg',     (select k.id::text from public.kurse k where k.slug = 'weg'), true);
 select set_config('kt.hg',      (select k.id::text from public.kurse k where k.slug = 'hg'), true);
 select set_config('kt.n_kurse', (select count(*)::text from public.kurse), true);
+-- Der Test laeuft vor und nach Schritt C (Regeln nach Besitz); T35 erwartet je nach Stand anderes.
+select set_config('kt.schritt_c',
+  (exists (select 1 from public.kt_migrationen where version = '20261113160000'))::text, true);
 
 do $$
 begin
@@ -200,9 +203,14 @@ begin
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'T34: Co konnte seine Freigabe loeschen'; end if;
 
-  -- Schritt A oeffnet noch nichts: die alten Regeln lassen nur kurs_zugriff durch
+  -- Vor Schritt C oeffnet Schritt A noch nichts (die alten Regeln lassen nur kurs_zugriff durch);
+  -- nach Schritt C sieht Co genau den einen freigegebenen Kurs.
   select count(*) into n from public.kurse;
-  if n <> 0 then raise exception 'T35: Co sieht schon vor Schritt C % Kurse', n; end if;
+  if current_setting('kt.schritt_c')::boolean then
+    if n <> 1 then raise exception 'T35: Co sieht nach Schritt C % Kurse statt 1', n; end if;
+  else
+    if n <> 0 then raise exception 'T35: Co sieht schon vor Schritt C % Kurse', n; end if;
+  end if;
 end
 $$;
 

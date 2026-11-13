@@ -120,6 +120,12 @@ begin
   exception when insufficient_privilege then null;
   end;
 
+  -- neuer Kurs wie beim Deck-Sync: upsert auf das Kuerzel und gleich zuruecklesen (RETURNING)
+  insert into public.kurse (slug, name) values ('kt-test-neu', 'Test')
+  on conflict (slug) do update set name = excluded.name
+  returning 1 into n;
+  if n is distinct from 1 then raise exception 'C09: Niko kann keinen neuen Kurs anlegen und zuruecklesen'; end if;
+
   -- neuer Durchlauf und Haken wie bisher
   insert into public.durchlaeufe (kurs_id, name) values (current_setting('kt.weg')::uuid, 'kt-test Niko');
   update public.fortschritt set vermittelt = vermittelt where durchlauf_id = current_setting('kt.niko_durchlauf')::uuid;

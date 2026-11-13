@@ -16,7 +16,7 @@ select json_build_object(
     'kurstage',          (select coalesce(json_agg(t), '[]') from public.kurstage t),
     'durchlaeufe',       (select coalesce(json_agg(t), '[]') from public.durchlaeufe t),
     'fortschritt',       (select coalesce(json_agg(t), '[]') from public.fortschritt t),
-    'kurs_zugriff',      (select coalesce(json_agg(t), '[]') from public.kurs_zugriff t),
+    -- kurs_zugriff gibt es seit 20261113160000 nicht mehr (aufgegangen in kt_trainer)
     'kt_migrationen',    (select coalesce(json_agg(t), '[]') from public.kt_migrationen t),
     'kt_trainer',        (select coalesce(json_agg(t), '[]') from public.kt_trainer t),
     'kt_kurs_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_kurs_freigaben t)
@@ -25,7 +25,7 @@ select json_build_object(
     select json_agg(p order by p.schemaname, p.tablename, p.policyname)
     from pg_policies p
     where (p.schemaname = 'public'
-           and (p.tablename in ('kurse', 'kurstage', 'durchlaeufe', 'fortschritt', 'kurs_zugriff')
+           and (p.tablename in ('kurse', 'kurstage', 'durchlaeufe', 'fortschritt')
                 or p.tablename like 'kt\_%'))
        or (p.schemaname = 'storage' and p.tablename = 'objects')
   ),
@@ -38,7 +38,7 @@ select json_build_object(
     select json_agg(json_build_object('tabelle', g.table_name, 'rolle', g.grantee, 'recht', g.privilege_type))
     from information_schema.role_table_grants g
     where g.table_schema = 'public'
-      and (g.table_name in ('kurse', 'kurstage', 'durchlaeufe', 'fortschritt', 'kurs_zugriff')
+      and (g.table_name in ('kurse', 'kurstage', 'durchlaeufe', 'fortschritt')
            or g.table_name like 'kt\_%')
   ),
   'bucket_dateien', (

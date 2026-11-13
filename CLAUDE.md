@@ -97,7 +97,10 @@ Claude meldet nie selbst „fertig“. Ein Baustein ist abgeschlossen, wenn Niko
 3. **Zu jeder Migration eine Rückbau-Datei** in `supabase/rueckbau/` mit gleichem Namen.
 4. **Sicherung vorher.** Vor jeder Migration und jedem Rückbau speichert Claude Inhalt und Regeln der
    Kurs-Tool-Tabellen mit `supabase/sicherung.sql` als Datei in `backup/` (nur lokal, steht in
-   `.gitignore`). Neue `kt_`-Tabellen trägt Claude dort direkt nach dem Einspielen ein.
+   `.gitignore`). Neue `kt_`-Tabellen trägt Claude dort direkt nach dem Einspielen ein, entfernte
+   Tabellen nimmt er heraus. Sicherung und Migration laufen in **einem** Befehl, verkettet mit `&&`:
+   Scheitert die Sicherung, startet die Migration nicht (Lehre vom 13.11.2026).
+   Nach jeder Migration laufen **alle** Rechte-Tests, nicht nur der neue.
    Jede Migration beginnt mit `set local lock_timeout = '3s'`: Muss sie auf eine Sperre warten, bricht
    sie ab, statt Anmeldungen im Prüfungstool aufzuhalten.
 5. **Rechte-Tests** in `supabase/tests/` laufen in einer Transaktion, die am Ende zurückgerollt wird.

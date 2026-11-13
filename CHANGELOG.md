@@ -2,7 +2,7 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
-## 2026-11-13 · Baustein 1 · Besitz und Rechte (Schritte A und B)
+## 2026-11-13 · Baustein 1 · Besitz und Rechte (Schritte A, B, C)
 
 - **Schritt A (hinzufügend, eingespielt 13.11.2026, Test live grün):** `20261113150000_kt_besitz_und_freigaben.sql` legt
   `kt_migrationen`, `kt_trainer` (Niko als Admin, übernommen aus `kurs_zugriff`), `kurse.besitzer_id`,
@@ -12,8 +12,24 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   `TrainerContext`), Kopfzeile zeigt den Anzeigenamen, neue Seite „Freigaben“ (Kurs an Trainer
   freigeben, Stufe ändern, entfernen; jeder Schreibschritt prüft per `.select()`, ob er wirklich ankam),
   freigegebene Kurse tragen den Hinweis „Freigegeben von …“.
-- **Schritt C (Regeln nach Besitz) vorbereitet, nicht eingespielt:** `20261113160000_kt_regeln_nach_besitz.sql`
-  samt Rückbau und Test. Wartet auf Nikos „ja“ (gelb).
+- **Schritt C (Regeln nach Besitz), eingespielt 13.11.2026 nach Nikos „ja“:**
+  `20261113160000_kt_regeln_nach_besitz.sql`. Alte Regeln, `kurs_zugriff` und `hat_kurszugriff()` entfernt;
+  Lesen nach Besitz und Freigabe, Schreiben und Löschen nur der Besitzer, Bucket nach Kurs-Kürzel,
+  verwaiste Bucket-Dateien für den Admin; `anon` ohne Tabellenrechte.
+- **Korrektur, eingespielt 13.11.2026:** `20261113170000_kt_kurse_lesen_neuer_kurs.sql`. Nach Schritt C
+  konnte ein *neuer* Kurs nicht angelegt und in derselben Anweisung zurückgelesen werden (so macht es der
+  Deck-Sync): Die Leseregel fragte `kt_kurs_stufe(id)`, und die Funktion sieht die gerade eingefügte
+  Zeile noch nicht. Gefunden durch erneuten Lauf von Test A (T14); jetzt erkennt die Regel den Besitzer
+  zusätzlich direkt an der Zeile. Test C prüft das jetzt selbst (C09). Bestehende Kurse waren nie betroffen.
+- Panne: Vor der Korrektur scheiterte die Sicherung (`kurs_zugriff` war schon entfernt), die Korrektur lief
+  trotzdem, weil beide Befehle parallel abgeschickt wurden. Folgen: keine (nur eine Leseregel, Rückbau
+  vorhanden, Sicherung von vor Schritt C vollständig). Seitdem Regel in `CLAUDE.md` §4 Nr. 4: Sicherung
+  und Migration mit `&&` verketten; nach jeder Migration alle Rechte-Tests.
+- Test A kennt jetzt beide Stände (T35: vor Schritt C sieht Co nichts, danach genau seinen Kurs).
+- Nach allem live geprüft: Test A und Test C grün, 3 Einträge in `kt_migrationen`, keine Testreste;
+  `npm run sync:decks -- --dry` unter Nikos Anmeldung sieht alle 4 Kurse und 44 Decks unverändert.
+- Feste Erlaubnis für `node scripts/sql.mjs` in `.claude/settings.local.json` (lokal, nicht im Repo),
+  auf Nikos „ja“.
 - Selbstprüfung: Probelauf A + Test A und Probelauf A + C + Test C jeweils in einer zurückgerollten
   Transaktion auf der Live-Datenbank bestanden; danach nachweislich nichts übrig (keine `kt_`-Tabellen,
   keine Testadressen in `eingeladene_trainer`). Gegenproben: 5 für A, 9 für C, jede eingebaute
