@@ -47,7 +47,9 @@ const ANON_KEY = env.VITE_SUPABASE_ANON_KEY
 const EMAIL = env.SUPABASE_EMAIL
 const KURS_WURZEL = env.KURS_WURZEL
 // Anleitung fuer Claude, die jedem Quellpaket beiliegt (Baustein 4)
-const ANLEITUNG = readFileSync(join(WURZEL, 'scripts', 'quellpaket-anleitung.md'), 'utf8')
+// Zeilenenden vereinheitlichen: Git stellt sie unter Windows beim Auschecken um, die Pruefsumme
+// des Pakets soll davon nicht abhaengen (sonst gaelte jedes Paket als geaendert)
+const ANLEITUNG = readFileSync(join(WURZEL, 'scripts', 'quellpaket-anleitung.md'), 'utf8').replace(/\r\n/g, '\n')
 const SITZUNGSDATEI = join(WURZEL, '.sync-session.json')
 const BUCKET = 'decks'
 const TROCKEN = process.argv.includes('--dry')
