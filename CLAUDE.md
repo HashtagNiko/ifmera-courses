@@ -95,8 +95,11 @@ Claude meldet nie selbst „fertig“. Ein Baustein ist abgeschlossen, wenn Niko
    `node scripts/sql.mjs <datei>`. Jede Migration trägt sich am Ende in `kt_migrationen` ein; die
    Migrationstabelle von Supabase (`supabase_migrations`) gehört dem Prüfungstool und bleibt unberührt.
 3. **Zu jeder Migration eine Rückbau-Datei** in `supabase/rueckbau/` mit gleichem Namen.
-4. **Sicherung vorher.** Vor jeder Migration speichert Claude Inhalt und Regeln der Kurs-Tool-Tabellen
-   als Datei in `backup/` (nur lokal, steht in `.gitignore`).
+4. **Sicherung vorher.** Vor jeder Migration und jedem Rückbau speichert Claude Inhalt und Regeln der
+   Kurs-Tool-Tabellen mit `supabase/sicherung.sql` als Datei in `backup/` (nur lokal, steht in
+   `.gitignore`). Neue `kt_`-Tabellen trägt Claude dort direkt nach dem Einspielen ein.
+   Jede Migration beginnt mit `set local lock_timeout = '3s'`: Muss sie auf eine Sperre warten, bricht
+   sie ab, statt Anmeldungen im Prüfungstool aufzuhalten.
 5. **Rechte-Tests** in `supabase/tests/` laufen in einer Transaktion, die am Ende zurückgerollt wird.
    Test-Konten entstehen nur darin, es bleibt nichts zurück. Weil der Trigger des Prüfungstools jedes
    neue Konto nur zulässt, wenn die Adresse in `eingeladene_trainer` steht, trägt der Test seine

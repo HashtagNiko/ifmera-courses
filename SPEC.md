@@ -80,7 +80,9 @@ Weitere Trainer können später dazukommen. Nichts wird auf genau zwei Personen 
   in die Datenbank eingespielt (Bestandsaufnahme 13.11.2026) und geht in den neuen Regeln auf.
 - `anon` verliert alle Rechte auf die Tabellen des Kurs-Tools; `authenticated` behält nur, was die App
   braucht (kein `truncate`, `references`, `trigger`).
-- Die zwei alten Testdateien im Bucket (`test/…`) werden entfernt (gelb).
+- Dateien im Bucket, deren erster Ordner zu keinem Kurs gehört (die zwei alten Testdateien unter
+  `test/…`, später Reste gelöschter Kurse), darf der Admin lesen und löschen; sonst kämen sie nie wieder
+  weg. Die zwei Testdateien entfernt Claude nach Schritt C über die Storage-API (gelb).
 - `kt_migrationen` hält fest, welche Migrationen des Kurs-Tools eingespielt sind.
 - Reihenfolge: hinzufügen (grün) → App live → alte Regeln ersetzen (gelb) → Rechte-Tests auf der
   echten Datenbank in einer zurückgerollten Transaktion.

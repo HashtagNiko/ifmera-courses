@@ -4,6 +4,8 @@ import Kopfzeile from '../components/Kopfzeile'
 import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse'
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
+import { useIch } from '../lib/TrainerContext'
+import { trainerLaden } from '../lib/trainer'
 
 /** Kurstag mit dem Segment, unter dem er einsortiert wird. */
 type TagImSegment = Kurstag & { segmentEffektiv: number }
@@ -17,6 +19,15 @@ export default function DashboardPage() {
   const { durchlaufId } = useDurchlauf()
   const [vermittelt, setVermittelt] = useState<Set<string>>(new Set())
   const [durchlaufName, setDurchlaufName] = useState<string | null>(null)
+  const ich = useIch()
+  const [namen, setNamen] = useState<Map<string, string>>(new Map())
+
+  // Namen der anderen Trainer, für den Hinweis bei freigegebenen Kursen
+  useEffect(() => {
+    trainerLaden()
+      .then((t) => setNamen(new Map(t.map((x) => [x.id, x.anzeigename]))))
+      .catch(() => setNamen(new Map()))
+  }, [])
 
   useEffect(() => {
     kurseLaden()
@@ -56,6 +67,8 @@ export default function DashboardPage() {
   }, [aktiverKurs, durchlaufId])
 
   const segmente = [...new Set(tage.map((t) => t.segmentEffektiv))].sort((a, b) => a - b)
+  const kurs = kurse.find((k) => k.id === aktiverKurs)
+  const fremderKurs = kurs && kurs.besitzer_id !== ich.id
 
   return (
     <div className="min-h-full bg-ifm-cream">
@@ -75,9 +88,19 @@ export default function DashboardPage() {
                 }`}
               >
                 {k.name}
+                {k.besitzer_id !== ich.id && <span className="ml-1 opacity-70">*</span>}
               </button>
             ))}
           </div>
+        )}
+
+        {fremderKurs && (
+          <p className="mb-6 text-sm text-ifm-gray">
+            {kurse.length > 1 && '* '}
+            Freigegeben von{' '}
+            <span className="text-ifm-blue">{namen.get(kurs.besitzer_id) ?? 'einem anderen Trainer'}</span>.
+            Du kannst ihn nutzen, aber nicht verändern.
+          </p>
         )}
 
         {durchlaufName && (

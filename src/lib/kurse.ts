@@ -20,22 +20,13 @@ export interface Kurs {
   id: string
   slug: string
   name: string
+  /** Trainer, dem der Kurs gehört (kt_trainer.id) */
+  besitzer_id: string
 }
 
-/**
- * Prüft, ob der angemeldete Nutzer für das Kurs-Tool freigeschaltet ist.
- * Das Supabase-Projekt teilen wir mit dem Prüfungstool, in dem auch andere
- * Trainer Konten haben. Die Freigabe steuert allein die Tabelle `kurs_zugriff`;
- * RLS setzt dieselbe Regel serverseitig durch.
- */
-export async function hatZugriff(): Promise<boolean> {
-  const { data, error } = await supabase.from('kurs_zugriff').select('trainer_id').limit(1)
-  if (error) return false
-  return (data?.length ?? 0) > 0
-}
-
+/** Alle Kurse, die der Angemeldete sehen darf: eigene und freigegebene. */
 export async function kurseLaden(): Promise<Kurs[]> {
-  const { data, error } = await supabase.from('kurse').select('id, slug, name').order('name')
+  const { data, error } = await supabase.from('kurse').select('id, slug, name, besitzer_id').order('name')
   if (error) throw new Error(error.message)
   return (data ?? []) as Kurs[]
 }
