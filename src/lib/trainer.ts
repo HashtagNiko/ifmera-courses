@@ -95,6 +95,11 @@ export function darfNotizen(besitzerId: string, ichId: string, stufe: Stufe | un
   return besitzerId === ichId || stufe === 'notizen' || stufe === 'fassung'
 }
 
+/** Darf man Quellpakete laden und eigene Fassungen anlegen? Besitzer immer, sonst Stufe "fassung". */
+export function darfFassung(besitzerId: string, ichId: string, stufe: Stufe | undefined): boolean {
+  return besitzerId === ichId || stufe === 'fassung'
+}
+
 /**
  * Legt eine Freigabe an oder ändert ihre Stufe.
  *

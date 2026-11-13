@@ -22,9 +22,11 @@ export interface Kurstag {
   /** Teilnehmerfassung und PDF; nur gesetzt, wenn sie ausgegeben werden (im Lieferordner liegen) */
   teilnehmer_pfad: string | null
   pdf_pfad: string | null
+  /** Quellpaket (Zip) zum Bearbeiten mit Claude; lesbar ab Stufe "fassung" (Baustein 4) */
+  quellen_pfad: string | null
 }
 
-export type DownloadArt = 'trainer' | 'teilnehmer' | 'pdf'
+export type DownloadArt = 'trainer' | 'teilnehmer' | 'pdf' | 'quellen'
 
 export interface Kurs {
   id: string
@@ -46,7 +48,7 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
     .from('kurstage')
     // Eine einzelne Zeichenkette, nicht zusammengesetzt: supabase-js leitet die
     // Typen aus dem Literal ab und verliert sie bei einer Verkettung.
-    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am, liefername, teilnehmer_pfad, pdf_pfad')
+    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am, liefername, teilnehmer_pfad, pdf_pfad, quellen_pfad')
     .eq('kurs_id', kursId)
     .order('position', { nullsFirst: false })
     .order('nummer')
@@ -156,6 +158,7 @@ export function downloadName(tag: Kurstag, art: DownloadArt): string {
   const basis = tag.liefername ?? `Tag ${tag.nummer}`
   if (art === 'trainer') return `${basis} (Trainerfassung).html`
   if (art === 'teilnehmer') return `${basis}.html`
+  if (art === 'quellen') return `${basis} (Quellen).zip`
   return `${basis}.pdf`
 }
 
@@ -172,14 +175,19 @@ export async function dateiHerunterladen(
   /** nur bei der Trainerfassung: eigene Notizen mit hineinnehmen */
   kurstagId?: string,
 ): Promise<void> {
-  const istPdf = dateiname.endsWith('.pdf')
-  const notizen = istPdf ? Promise.resolve([]) : notizenHolen(kurstagId)
+  // Nur HTML wird angepasst; PDF und Zip kommen unverändert
+  const istHtml = dateiname.endsWith('.html')
+  const notizen = istHtml ? notizenHolen(kurstagId) : Promise.resolve([])
   const antwort = await ausDemBucket(pfad)
   // Supabase liefert HTML als text/plain aus; der Typ richtet sich deshalb nach der Endung.
-  const inhalt = istPdf
-    ? await antwort.arrayBuffer()
-    : mitNotizen(deckAnpassen(await antwort.text(), anpassung), await notizen)
-  const typ = istPdf ? 'application/pdf' : 'text/html;charset=utf-8'
+  const inhalt = istHtml
+    ? mitNotizen(deckAnpassen(await antwort.text(), anpassung), await notizen)
+    : await antwort.arrayBuffer()
+  const typ = istHtml
+    ? 'text/html;charset=utf-8'
+    : dateiname.endsWith('.zip')
+      ? 'application/zip'
+      : 'application/pdf'
   const url = URL.createObjectURL(new Blob([inhalt], { type: typ }))
   const link = document.createElement('a')
   link.href = url

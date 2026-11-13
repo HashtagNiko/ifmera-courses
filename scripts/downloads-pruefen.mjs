@@ -17,6 +17,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
+import JSZip from 'jszip'
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SITZUNGSDATEI = join(WURZEL, '.sync-session.json')
@@ -54,7 +55,7 @@ async function pruefen() {
 
   const { data: tage, error: lesefehler } = await supabase
     .from('kurstage')
-    .select('nummer, deck_pfad, deck_hash, teilnehmer_pfad, teilnehmer_hash, pdf_pfad, pdf_hash, kurse(slug)')
+    .select('nummer, deck_pfad, deck_hash, teilnehmer_pfad, teilnehmer_hash, pdf_pfad, pdf_hash, quellen_pfad, kurse(slug)')
     .eq('art', 'kurstag')
   if (lesefehler) {
     console.error(`kurstage nicht lesbar: ${lesefehler.message}`)
@@ -67,6 +68,9 @@ async function pruefen() {
       ['Trainer', t.deck_pfad, t.deck_hash],
       ['Teilnehmer', t.teilnehmer_pfad, t.teilnehmer_hash],
       ['PDF', t.pdf_pfad, t.pdf_hash],
+      // Quellpaket: die Pruefsumme gilt dem Inhalt, nicht dem Zip; geprueft wird, ob es sich
+      // oeffnen laesst und Bauplan, Engine und Build-Skript enthaelt
+      ['Quellen', t.quellen_pfad, null],
     ]
       .filter(([, pfad]) => pfad)
       .map(([art, pfad, hash]) => ({ kurs: t.kurse?.slug, nummer: t.nummer, art, pfad, hash })),
@@ -84,14 +88,29 @@ async function pruefen() {
       schlecht.push(`${d.kurs} Tag ${d.nummer} ${d.art}: HTTP ${antwort.status}`)
       continue
     }
-    const hash = createHash('sha256').update(Buffer.from(await antwort.arrayBuffer())).digest('hex')
+    const inhalt = Buffer.from(await antwort.arrayBuffer())
+    if (d.art === 'Quellen') {
+      try {
+        const zip = await JSZip.loadAsync(inhalt)
+        const namen = Object.keys(zip.files)
+        const fehlt = ['build.json', 'CLAUDE.md', 'engine/deck_engine.html', 'engine/build.py'].filter(
+          (n) => !namen.some((x) => x.endsWith(`/${n}`)),
+        )
+        if (fehlt.length) schlecht.push(`${d.kurs} Tag ${d.nummer} Quellen: es fehlt ${fehlt.join(', ')}`)
+        else gut++
+      } catch (e) {
+        schlecht.push(`${d.kurs} Tag ${d.nummer} Quellen: kein gueltiges Zip (${e.message})`)
+      }
+      continue
+    }
+    const hash = createHash('sha256').update(inhalt).digest('hex')
     if (hash === d.hash) gut++
     else schlecht.push(`${d.kurs} Tag ${d.nummer} ${d.art}: Pruefsumme weicht ab`)
   }
 
   const nachArt = (art) => dateien.filter((d) => d.art === art).length
   console.log(
-    `${dateien.length} Dateien geprueft (Trainer ${nachArt('Trainer')}, Teilnehmer ${nachArt('Teilnehmer')}, PDF ${nachArt('PDF')}): ` +
+    `${dateien.length} Dateien geprueft (Trainer ${nachArt('Trainer')}, Teilnehmer ${nachArt('Teilnehmer')}, PDF ${nachArt('PDF')}, Quellen ${nachArt('Quellen')}): ` +
       `${gut} in Ordnung, ${schlecht.length} fehlerhaft.`,
   )
   for (const s of schlecht) console.log(`  ${s}`)

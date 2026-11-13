@@ -14,7 +14,7 @@ import {
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 import { useIch } from '../lib/TrainerContext'
-import { darfNotizen, meineStufenLaden, trainerLaden, type Stufe } from '../lib/trainer'
+import { darfFassung, darfNotizen, meineStufenLaden, trainerLaden, type Stufe } from '../lib/trainer'
 import type { DeckAnpassung } from '../lib/deckAnpassung'
 
 /** Kurstag mit dem Segment, unter dem er einsortiert wird. */
@@ -154,6 +154,7 @@ export default function DashboardPage() {
                     vermittelt={vermittelt.has(t.id)}
                     anpassung={anpassung}
                     notizen={Boolean(kurs && darfNotizen(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
+                    fassung={Boolean(kurs && darfFassung(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
                   />
                 ))}
             </div>
@@ -216,12 +217,15 @@ function Kachel({
   vermittelt,
   anpassung,
   notizen,
+  fassung,
 }: {
   tag: TagImSegment
   vermittelt: boolean
   anpassung: DeckAnpassung
   /** Darf der Angemeldete zu diesem Kurs eigene Notizen schreiben? */
   notizen: boolean
+  /** Darf der Angemeldete Quellpakete laden (Stufe "fassung" oder Besitzer)? */
+  fassung: boolean
 }) {
   const inhalt = (
     <>
@@ -254,6 +258,12 @@ function Kachel({
       ['trainer', 'Trainer', 'Trainerfassung (HTML, mit Cockpit und Notizen)', tag.deck_pfad],
       ['teilnehmer', 'Teilnehmer', 'Teilnehmerfassung (HTML, ohne Notizen)', tag.teilnehmer_pfad],
       ['pdf', 'PDF', 'PDF der Teilnehmerfassung', tag.pdf_pfad],
+      [
+        'quellen',
+        'Quellen',
+        'Quellpaket zum Bearbeiten mit Claude (Folien, Bilder, Engine, Anleitung)',
+        fassung ? tag.quellen_pfad : null,
+      ],
     ] as const
   ).filter(([, , , pfad]) => pfad)
 
@@ -261,7 +271,8 @@ function Kachel({
     <div className={rahmen}>
       {tag.deck_pfad ? (
         <button
-          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag), anpassung, tag.id)}
+          // Eigene Notizen nur, solange man sie auch schreiben darf (Stufe "notizen" oder Besitzer)
+          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag), anpassung, notizen ? tag.id : undefined)}
           className="block w-full flex-1 text-left p-4 cursor-pointer"
         >
           {inhalt}
@@ -282,7 +293,7 @@ function Kachel({
               dateiname={downloadName(tag, art)}
               anpassung={anpassung}
               // Die Trainerfassung nimmt die eigenen Notizen mit, das Cockpit zeigt sie auch offline
-              kurstagId={art === 'trainer' ? tag.id : undefined}
+              kurstagId={art === 'trainer' && notizen ? tag.id : undefined}
             />
           ))}
           {notizen && tag.deck_pfad && (

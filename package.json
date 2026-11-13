@@ -11,7 +11,8 @@
     "sync:decks": "node scripts/sync-decks.mjs",
     "import:tagebuch": "node scripts/import-tagebuch.mjs",
     "test": "vitest run",
-    "pruefen:downloads": "node scripts/downloads-pruefen.mjs"
+    "pruefen:downloads": "node scripts/downloads-pruefen.mjs",
+    "pruefen:quellpakete": "node scripts/quellpakete-pruefen.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

@@ -37,6 +37,7 @@ import { join, basename, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createInterface } from 'node:readline'
 import { createClient } from '@supabase/supabase-js'
+import { kursregelnLesen, quellpaketPlanen, quellpaketZippen } from './quellpaket.mjs'
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const env = ladeEnv(join(WURZEL, '.env'))
@@ -45,6 +46,8 @@ const SUPABASE_URL = env.VITE_SUPABASE_URL
 const ANON_KEY = env.VITE_SUPABASE_ANON_KEY
 const EMAIL = env.SUPABASE_EMAIL
 const KURS_WURZEL = env.KURS_WURZEL
+// Anleitung fuer Claude, die jedem Quellpaket beiliegt (Baustein 4)
+const ANLEITUNG = readFileSync(join(WURZEL, 'scripts', 'quellpaket-anleitung.md'), 'utf8')
 const SITZUNGSDATEI = join(WURZEL, '.sync-session.json')
 const BUCKET = 'decks'
 const TROCKEN = process.argv.includes('--dry')
@@ -121,12 +124,14 @@ async function synchronisiereKurs(kurs) {
   // Kurstag 1) und wuerden die Pruefsummen sonst ueberschreiben.
   const { data: bestand } = await supabase
     .from('kurstage')
-    .select('nummer, deck_hash, teilnehmer_hash, pdf_hash')
+    .select('nummer, deck_hash, teilnehmer_hash, pdf_hash, quellen_hash')
     .eq('kurs_id', kursId)
     .eq('art', 'kurstag')
 
   const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z]))
-  const zahl = { trainer: 0, teilnehmer: 0, pdf: 0, unveraendert: 0, ausgegeben: 0 }
+  const zahl = { trainer: 0, teilnehmer: 0, pdf: 0, quellen: 0, unveraendert: 0, ausgegeben: 0 }
+  // Gestaltungsregeln fuer das Quellpaket (Abschnitte 3–6 der CLAUDE.md, Feld "regeln")
+  const kursregeln = kursregelnLesen(kurs.regeln ? join(KURS_WURZEL, kurs.regeln) : null)
 
   for (const deck of decks.sort((a, b) => a.nummer - b.nummer)) {
     const alt = bekannt.get(deck.nummer) ?? {}
@@ -139,6 +144,25 @@ async function synchronisiereKurs(kurs) {
     const namePdf = pdf && lieferung ? await lieferung.finde(pdf) : null
     const nameTrainer = lieferung ? await lieferung.finde(trainer) : null
     const liefername = nameTeilnehmer ?? namePdf ?? nameTrainer
+
+    // Quellpaket (Baustein 4): geplant wird immer, gezippt und geladen nur bei Aenderung des Inhalts
+    let paket = null
+    try {
+      const plan = quellpaketPlanen(dirname(dirname(deck.pfad)), basename(deck.pfad), {
+        anleitung: ANLEITUNG,
+        kursregeln,
+      })
+      if (plan) {
+        paket = {
+          plan,
+          ziel: `${kurs.slug}/quellen/${plan.ordnername}.zip`,
+          neu: ERZWINGEN || alt.quellen_hash !== plan.pruefsumme,
+          groesse: null,
+        }
+      }
+    } catch (e) {
+      console.log(`  Tag ${deck.nummer}: kein Quellpaket (${e.message})`)
+    }
 
     // Die Dateien laden wir nur bei echter Aenderung; Titel, Segmentname und
     // Liefername schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
@@ -169,10 +193,12 @@ async function synchronisiereKurs(kurs) {
     for (const s of schritte.filter((s) => s.neu)) {
       console.log(`  Tag ${deck.nummer}: ${s.art} geaendert -> ${s.ziel} (${mb(s.datei.inhalt.length)})`)
     }
+    if (paket?.neu) console.log(`  Tag ${deck.nummer}: Quellen geaendert -> ${paket.ziel}`)
     if (nameTeilnehmer || namePdf) zahl.ausgegeben++
 
     if (TROCKEN) {
       for (const s of schritte) s.neu ? zahl[s.art.toLowerCase()]++ : zahl.unveraendert++
+      if (paket) paket.neu ? zahl.quellen++ : zahl.unveraendert++
       continue
     }
 
@@ -190,6 +216,18 @@ async function synchronisiereKurs(kurs) {
         process.exitCode = 1
         fehler = true
       }
+    }
+    if (paket?.neu && !fehler) {
+      const zip = await quellpaketZippen(paket.plan)
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(paket.ziel, zip, { contentType: 'application/zip', upsert: true, cacheControl: '0' })
+      if (error) {
+        console.error(`  Fehler beim Upload (Quellen) von Tag ${deck.nummer}: ${error.message}`)
+        process.exitCode = 1
+        fehler = true
+      }
+      paket.groesse = zip.length
     }
     if (fehler) continue
 
@@ -215,7 +253,12 @@ async function synchronisiereKurs(kurs) {
       pdf_pfad: pd?.ziel ?? null,
       pdf_hash: pd?.datei.hash ?? null,
       pdf_groesse: pd?.datei.inhalt.length ?? null,
+      quellen_pfad: paket?.ziel ?? null,
+      quellen_hash: paket?.plan.pruefsumme ?? null,
     }
+    // Groesse nur, wenn das Zip neu gebaut wurde; sonst bleibt der gespeicherte Wert
+    if (!paket) zeile.quellen_groesse = null
+    else if (paket.neu) zeile.quellen_groesse = paket.groesse
     // Das Stand-Datum nur anfassen, wenn das Trainer-Deck wirklich neu ist.
     if (schritte[0].neu) zeile.deck_aktualisiert_am = new Date().toISOString()
 
@@ -229,10 +272,12 @@ async function synchronisiereKurs(kurs) {
       continue
     }
     for (const s of schritte) s.neu ? zahl[s.art.toLowerCase()]++ : zahl.unveraendert++
+    if (paket) paket.neu ? zahl.quellen++ : zahl.unveraendert++
   }
 
   const bilanz =
-    `${zahl.trainer} Trainer-Deck(s), ${zahl.teilnehmer} Teilnehmerfassung(en), ${zahl.pdf} PDF(s)` +
+    `${zahl.trainer} Trainer-Deck(s), ${zahl.teilnehmer} Teilnehmerfassung(en), ${zahl.pdf} PDF(s),` +
+    ` ${zahl.quellen} Quellpaket(e)` +
     ` ${TROCKEN ? 'waeren geladen worden' : 'geladen'}, ${zahl.unveraendert} Datei(en) unveraendert;` +
     ` ${zahl.ausgegeben} von ${decks.length} Tagen ausgegeben.`
   console.log(TROCKEN ? `  Probelauf: ${bilanz}` : `  Fertig: ${bilanz}`)

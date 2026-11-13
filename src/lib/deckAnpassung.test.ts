@@ -82,5 +82,6 @@ describe('downloadName', () => {
 
   it('fällt ohne Liefernamen auf "Tag <n>" zurück', () => {
     expect(downloadName({ ...tag, liefername: null }, 'pdf')).toBe('Tag 5.pdf')
+    expect(downloadName(tag, 'quellen')).toBe(`${tag.liefername} (Quellen).zip`)
   })
 })

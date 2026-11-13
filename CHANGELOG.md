@@ -2,6 +2,26 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 4, Teil 1 · Quellpakete
+
+- Migration `20261113200000_kt_quellpakete.sql` (hinzufügend, nach Sicherung eingespielt): `kurstage`
+  bekommt `quellen_pfad`, `quellen_hash`, `quellen_groesse`. Regeln unverändert; `<kürzel>/quellen/` ist
+  seit Baustein 1 erst ab Stufe „fassung“ lesbar (Test C, C35/C39). Alle drei Testpakete danach grün.
+- `scripts/quellpaket.mjs`: je Kurstag ein eigenständiges Zip (Folienquellen, Bilder, Engine, Build-Skript,
+  Bauplan nur für diesen Tag, Anleitung `CLAUDE.md` aus `scripts/quellpaket-anleitung.md`, Gestaltungsregeln
+  `KURSREGELN.md` = Abschnitte 3–6 der CLAUDE.md im WEG-Kursordner, Feld `regeln`). Verweise außerhalb des
+  Segments (101 bei den Kompaktfassungen) werden ins Paket geholt. Prüfsumme über den Inhalt, feste
+  Zeitstempel im Zip: ein zweiter Sync lädt nichts erneut.
+- Deck-Sync baut und lädt Pakete nur bei Änderung. Erster Lauf: 44 Pakete, zusammen rund 58 MB.
+- Kachel: Knopf „Quellen“ nur für den Besitzer und für Trainer mit Stufe „fassung“.
+- Prüfung: Jedes der 44 Pakete in einen leeren Ordner entpackt und mit Python gebaut: 26 ergeben byte-genau
+  das Deck im Tool; 18 weichen ab, weil das Deck im Kursordner älter ist als Quellen bzw. Engine (z. B.
+  H&G: Engine mit behobenem `#tmr`-Fehler, Decks noch nicht neu gebaut; WEG Tag 6: Text nach dem Bauen
+  geändert). Werkzeug dafür: `npm run pruefen:quellpakete`. `npm run pruefen:downloads` prüft jetzt auch
+  die Pakete (153 Dateien, alle in Ordnung).
+- Kleinigkeit aus der Prüfung von Baustein 3 behoben: Eigene Notizen kommen nur noch ins Cockpit, solange
+  man sie auch schreiben darf.
+
 ## 2026-11-13 · Baustein 3 · Eigene Notizen
 
 - Migration `20261113190000_kt_folien_notizen.sql` (hinzufügend, nach Sicherung eingespielt):
