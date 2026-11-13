@@ -1,5 +1,7 @@
 import { supabase, supabaseAnonKey, supabaseUrl } from './supabase'
 import { deckAnpassen, type DeckAnpassung } from './deckAnpassung'
+import { notizenEinsetzen, type EigeneNotiz } from './folien'
+import { notizenLaden } from './notizen'
 
 export interface Kurstag {
   id: string
@@ -71,11 +73,63 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
  * Zeitstempel in der Adresse den CDN-Cache; deshalb nicht mehr
  * `storage.download()`, das beides nicht kennt.
  */
-export async function deckLaden(deckPfad: string, anpassung?: DeckAnpassung): Promise<string> {
+export async function deckLaden(
+  deckPfad: string,
+  anpassung?: DeckAnpassung,
+  kurstagId?: string,
+): Promise<string> {
+  const notizen = notizenHolen(kurstagId) // läuft parallel zum Herunterladen des Decks
   const antwort = await ausDemBucket(deckPfad)
-  const angepasst = deckAnpassen(await antwort.text(), anpassung)
+  const angepasst = mitNotizen(deckAnpassen(await antwort.text(), anpassung), await notizen)
   const html = new Blob([ergaenzeVollbild(angepasst)], { type: 'text/html;charset=utf-8' })
   return URL.createObjectURL(html)
+}
+
+/** Das Deck als Text, unverändert (für die Notizen-Seite). */
+export async function deckText(deckPfad: string): Promise<string> {
+  return (await ausDemBucket(deckPfad)).text()
+}
+
+/**
+ * Eigene Notizen des Angemeldeten zu einem Kurstag (Baustein 3). Gelingt das Laden
+ * nicht, öffnet sich das Deck trotzdem, mit den Original-Notizen.
+ */
+async function notizenHolen(kurstagId?: string): Promise<EigeneNotiz[]> {
+  if (!kurstagId) return []
+  try {
+    return await notizenLaden(kurstagId)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Setzt die Notizen zuletzt ein, nach Name und Markierung: So kann der Namenstausch
+ * in der Fußzeile nie in die eingebetteten Notizdaten greifen.
+ */
+function mitNotizen(html: string, notizen: EigeneNotiz[]): string {
+  return notizen.length ? notizenEinsetzen(html, notizen) : html
+}
+
+export interface KurstagMitKurs {
+  id: string
+  art: Kurstag['art']
+  nummer: number
+  titel: string | null
+  tagebuch_titel: string | null
+  deck_pfad: string | null
+  kurs_id: string
+  kurse: { name: string; besitzer_id: string } | null
+}
+
+export async function kurstagLaden(id: string): Promise<KurstagMitKurs | null> {
+  const { data, error } = await supabase
+    .from('kurstage')
+    .select('id, art, nummer, titel, tagebuch_titel, deck_pfad, kurs_id, kurse(name, besitzer_id)')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data as KurstagMitKurs | null
 }
 
 /** Holt eine Datei aus dem privaten Bucket, am Cache vorbei (siehe deckLaden). */
@@ -115,11 +169,16 @@ export async function dateiHerunterladen(
   pfad: string,
   dateiname: string,
   anpassung?: DeckAnpassung,
+  /** nur bei der Trainerfassung: eigene Notizen mit hineinnehmen */
+  kurstagId?: string,
 ): Promise<void> {
-  const antwort = await ausDemBucket(pfad)
   const istPdf = dateiname.endsWith('.pdf')
+  const notizen = istPdf ? Promise.resolve([]) : notizenHolen(kurstagId)
+  const antwort = await ausDemBucket(pfad)
   // Supabase liefert HTML als text/plain aus; der Typ richtet sich deshalb nach der Endung.
-  const inhalt = istPdf ? await antwort.arrayBuffer() : deckAnpassen(await antwort.text(), anpassung)
+  const inhalt = istPdf
+    ? await antwort.arrayBuffer()
+    : mitNotizen(deckAnpassen(await antwort.text(), anpassung), await notizen)
   const typ = istPdf ? 'application/pdf' : 'text/html;charset=utf-8'
   const url = URL.createObjectURL(new Blob([inhalt], { type: typ }))
   const link = document.createElement('a')

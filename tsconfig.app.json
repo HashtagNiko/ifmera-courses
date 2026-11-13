@@ -20,5 +20,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "vite-env.d.ts"]
+  "include": ["src", "vite-env.d.ts"],
+  // Tests laufen mit Vitest (eigene Typen, teils Node); der App-Build prüft sie nicht mit.
+  "exclude": ["src/**/*.test.ts"]
 }

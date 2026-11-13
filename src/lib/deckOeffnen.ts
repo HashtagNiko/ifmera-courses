@@ -12,7 +12,13 @@ import type { DeckAnpassung } from './deckAnpassung'
  * Trainer-Cockpit selbst als zweites Fenster öffnet und die Folien darüber
  * steuert.
  */
-export function deckOeffnen(deckPfad: string, beschriftung: string, anpassung?: DeckAnpassung): void {
+export function deckOeffnen(
+  deckPfad: string,
+  beschriftung: string,
+  anpassung?: DeckAnpassung,
+  /** Kurstag, dessen eigene Notizen ins Cockpit sollen */
+  kurstagId?: string,
+): void {
   const fenster = window.open('', '_blank')
   if (!fenster) {
     window.alert(
@@ -24,7 +30,7 @@ export function deckOeffnen(deckPfad: string, beschriftung: string, anpassung?: 
   fenster.document.write(ladeSeite(beschriftung))
   fenster.document.close()
 
-  deckLaden(deckPfad, anpassung)
+  deckLaden(deckPfad, anpassung, kurstagId)
     .then((url) => {
       fenster.location.href = url
       // Erst freigeben, wenn das Deck sicher geladen ist; ein zu frühes

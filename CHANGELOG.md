@@ -2,6 +2,34 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 3 · Eigene Notizen
+
+- Migration `20261113190000_kt_folien_notizen.sql` (hinzufügend, nach Sicherung eingespielt):
+  `kt_folien_notizen` (je Trainer, Kurstag und Folie: Notiz, Aktion, Titel-Schnappschuss). Lesen und
+  Löschen nur die eigenen; Anlegen und Ändern nur mit Stufe „notizen“ oder mehr. Rechte-Test
+  `20261113190000_kt_folien_notizen_test.sql` (N01–N40), 3 Gegenproben; danach alle drei Testpakete live grün.
+- Folienschlüssel ohne Änderung der Kursordner: `data-id`, sonst Titel + laufende Nummer (Annahme, SPEC
+  Baustein 3, OFFENE-FRAGEN Nr. 19).
+- Seite „Eigene Notizen“ (`/notizen/:tagId`, Link „✎ Notizen“ in der Kachel): Original links, eigene
+  Fassung rechts, Speichern beim Verlassen eines Feldes, Vorschau der Formatierung, „Notizen ohne Folie“.
+- Cockpit: Skript in der Kopie des Decks umhüllt `syncCockpit()` und zeigt die eigene Notiz formatiert,
+  mit Schalter „Original-Notizen zeigen“. Gilt auch für die heruntergeladene Trainerfassung.
+- **Fund:** Die Engine bricht in `syncCockpit()` an der fehlenden Uhr `#tmr` ab (OFFENE-FRAGEN Nr. 18).
+  Ohne Gegenmaßnahme wären eigene Notizen im echten Browser nie erschienen; aufgefallen erst beim Test
+  mit der echten Engine. Das Skript fängt den Fehler, setzt die Notiz ein und gibt ihn unverändert weiter.
+- Tests: `folien.test.ts` (Cockpit mit nachgestellter Engine u. a.), `folien.engine.test.ts` (echte
+  Engine aus einem WEG- und einem H&G-Deck in jsdom, auch mit ausgeblendeten Kann-Folien; übersprungen
+  ohne `KURS_WURZEL`). Zusammen 29 Unit-Tests grün; Gegenprobe: ohne Weitergabe des Engine-Fehlers wird
+  der Engine-Test rot.
+- Zweiter Blick (Sub-Agent) vor dem Einspielen, umgesetzt: Build brach an der Node-Testdatei
+  (`tsconfig.app.json` schließt Tests jetzt aus); Speichern je Folie nacheinander statt parallel (sonst
+  konnte eine ältere Speicherung eine neuere überholen); „Original als Vorlage übernehmen“ fragt nach,
+  wenn es schon eine eigene Notiz gibt; Speichern beim Verlassen der Seite und Warnung beim Schließen des
+  Tabs; Schalter im Cockpit behält seinen Zustand beim Neuöffnen; Folien ohne Titel werden am Text
+  erkannt, doppelte `data-id` nummeriert; Notizen werden nach dem Namenstausch eingesetzt und parallel
+  zum Deck geladen; happy-dom (Sicherheitswarnung) durch jsdom ersetzt; Tests schärfer. Offen (Kleinigkeit):
+  Wird die Stufe eines Trainers auf „Ansehen“ gesenkt, zeigt sein Cockpit seine alten Notizen weiter.
+
 ## 2026-11-13 · Baustein 2 · Name in der Fußzeile, Markierung, Prüfwerkzeuge
 
 - Auf Nikos „ja“: Öffnet oder lädt ein Trainer ein fremdes Deck, steht in der Fußzeile seiner Kopie sein

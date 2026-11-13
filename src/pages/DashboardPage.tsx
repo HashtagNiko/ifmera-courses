@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { deckOeffnen } from '../lib/deckOeffnen'
 import Kopfzeile from '../components/Kopfzeile'
 import KeinKurs from '../components/KeinKurs'
@@ -13,7 +14,7 @@ import {
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 import { useIch } from '../lib/TrainerContext'
-import { trainerLaden } from '../lib/trainer'
+import { darfNotizen, meineStufenLaden, trainerLaden, type Stufe } from '../lib/trainer'
 import type { DeckAnpassung } from '../lib/deckAnpassung'
 
 /** Kurstag mit dem Segment, unter dem er einsortiert wird. */
@@ -31,12 +32,18 @@ export default function DashboardPage() {
   const ich = useIch()
   const [namen, setNamen] = useState<Map<string, string>>(new Map())
 
-  // Namen der anderen Trainer, für den Hinweis bei freigegebenen Kursen
+  const [stufen, setStufen] = useState<Map<string, Stufe>>(new Map())
+
+  // Namen der anderen Trainer, für den Hinweis bei freigegebenen Kursen,
+  // und die eigenen Stufen (wer bei fremden Kursen Notizen schreiben darf)
   useEffect(() => {
     trainerLaden()
       .then((t) => setNamen(new Map(t.map((x) => [x.id, x.anzeigename]))))
       .catch(() => setNamen(new Map()))
-  }, [])
+    meineStufenLaden(ich.id)
+      .then(setStufen)
+      .catch(() => setStufen(new Map()))
+  }, [ich.id])
 
   useEffect(() => {
     kurseLaden()
@@ -141,7 +148,13 @@ export default function DashboardPage() {
               {tage
                 .filter((t) => t.segmentEffektiv === seg)
                 .map((t) => (
-                  <Kachel key={t.id} tag={t} vermittelt={vermittelt.has(t.id)} anpassung={anpassung} />
+                  <Kachel
+                    key={t.id}
+                    tag={t}
+                    vermittelt={vermittelt.has(t.id)}
+                    anpassung={anpassung}
+                    notizen={Boolean(kurs && darfNotizen(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
+                  />
                 ))}
             </div>
           </section>
@@ -202,10 +215,13 @@ function Kachel({
   tag,
   vermittelt,
   anpassung,
+  notizen,
 }: {
   tag: TagImSegment
   vermittelt: boolean
   anpassung: DeckAnpassung
+  /** Darf der Angemeldete zu diesem Kurs eigene Notizen schreiben? */
+  notizen: boolean
 }) {
   const inhalt = (
     <>
@@ -245,7 +261,7 @@ function Kachel({
     <div className={rahmen}>
       {tag.deck_pfad ? (
         <button
-          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag), anpassung)}
+          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag), anpassung, tag.id)}
           className="block w-full flex-1 text-left p-4 cursor-pointer"
         >
           {inhalt}
@@ -255,7 +271,7 @@ function Kachel({
       )}
 
       {downloads.length > 0 && (
-        <div className="flex items-center gap-3 border-t border-ifm-blue/10 px-4 py-2 text-xs">
+        <div className="flex flex-wrap items-center gap-3 border-t border-ifm-blue/10 px-4 py-2 text-xs">
           <span className="text-ifm-gray">Herunterladen:</span>
           {downloads.map(([art, name, erklaerung, pfad]) => (
             <DownloadKnopf
@@ -265,8 +281,19 @@ function Kachel({
               pfad={pfad!}
               dateiname={downloadName(tag, art)}
               anpassung={anpassung}
+              // Die Trainerfassung nimmt die eigenen Notizen mit, das Cockpit zeigt sie auch offline
+              kurstagId={art === 'trainer' ? tag.id : undefined}
             />
           ))}
+          {notizen && tag.deck_pfad && (
+            <Link
+              to={`/notizen/${tag.id}`}
+              className="ml-auto font-medium text-ifm-blue underline-offset-2 hover:underline"
+              title="Eigene Notizen zu den Folien dieses Tages"
+            >
+              ✎ Notizen
+            </Link>
+          )}
         </div>
       )}
     </div>
@@ -279,12 +306,14 @@ function DownloadKnopf({
   pfad,
   dateiname,
   anpassung,
+  kurstagId,
 }: {
   name: string
   erklaerung: string
   pfad: string
   dateiname: string
   anpassung: DeckAnpassung
+  kurstagId?: string
 }) {
   const ich = useIch()
   const [laedt, setLaedt] = useState(false)
@@ -296,7 +325,7 @@ function DownloadKnopf({
         setLaedt(true)
         // Unsichtbare Markierung, damit sich eine weitergegebene Kopie zuordnen lässt
         const markierung = `${ich.anzeigename}, heruntergeladen am ${new Date().toLocaleString('de-DE')} über courses.shnoozy.top`
-        dateiHerunterladen(pfad, dateiname, { ...anpassung, markierung })
+        dateiHerunterladen(pfad, dateiname, { ...anpassung, markierung }, kurstagId)
           .catch((e: Error) => window.alert(`Herunterladen fehlgeschlagen: ${e.message}`))
           .finally(() => setLaedt(false))
       }}

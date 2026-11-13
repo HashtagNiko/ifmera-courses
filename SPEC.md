@@ -124,18 +124,23 @@ Teilnehmerfassung hat kein Cockpit und keine Notizen.
 
 ### Baustein 3 – Eigene Notizen
 
-- **Feste Folien-IDs:** Jede Folie in den Quellen bekommt einmalig ein `data-id` (gelb: ändert die
-  Kursordner, mit Sicherung). Der Build prüft, dass keine ID doppelt vorkommt (gelb: ändert die
-  Build-Skripte). Gilt für alle Kurse, voll und kompakt. Ohne feste IDs würden Notizen beim Einfügen
-  einer Folie verrutschen.
+- **Welche Folie gemeint ist – Annahme (13.11.2026, Claude; Niko war nicht erreichbar):** Keine IDs in
+  die Quellen. Der Schlüssel einer Folie ist ihr `data-id`, falls sie eines hat, sonst ihr Titel mit
+  laufender Nummer bei gleichen Titeln. Damit bleiben die Kursordner unberührt (kein Neubau, keine neue
+  Auslieferung), und eine eingefügte Folie verschiebt keine Notiz. Ändert sich ein Titel, erscheint die
+  Notiz unter „Notizen ohne Folie“ und geht nicht verloren. Feste IDs bleiben möglich (gelb,
+  OFFENE-FRAGEN Nr. 19).
 - `kt_folien_notizen`: Trainer, Kurstag, Folien-ID, Notiz, Aktion, geändert am. Lesen und schreiben
   nur der Besitzer; Länge begrenzt.
 - Seite „Notizen“ je Kurstag: Folienliste aus dem Deck. Links das Original (nur lesen; „übernehmen“
   kopiert es als Vorlage), rechts die eigene Notiz. Speichert automatisch.
 - **Annahme – Mini-Formatierung:** **fett**, *kursiv*, Aufzählung mit „-“, Zeilenumbruch. Sonst nichts.
-- Cockpit: zeigt die eigene Notiz statt des Originals, wenn es eine gibt; Schalter „Original anzeigen“.
-  Die Formatierung wird sicher dargestellt (erst alles maskieren, dann nur die vier Formate umsetzen).
-  Umgesetzt in der Kopie im Browser; die Engines bleiben unverändert.
+- Cockpit: zeigt die eigene Notiz statt des Originals, wenn es eine gibt; Schalter „Original-Notizen
+  zeigen“. Die Formatierung wird sicher dargestellt (erst alles maskieren, dann nur die vier Formate
+  umsetzen). Umgesetzt in der Kopie im Browser; die Engines bleiben unverändert. Die Engine bricht in
+  `syncCockpit` an der fehlenden Uhr `#tmr` ab (OFFENE-FRAGEN Nr. 18); das Skript setzt die eigene Notiz
+  trotzdem ein und gibt den Fehler unverändert weiter.
+- Die heruntergeladene Trainerfassung enthält die eigenen Notizen; das Cockpit zeigt sie auch offline.
 - Verwaiste Notizen (die Folie gibt es nicht mehr) stehen gesammelt unten und gehen nicht verloren.
 - **Annahme:** Niko kann die Notiz-Ebene auch für seine eigenen Decks nutzen.
 - **Baustein 3b** (danach): Bearbeiten direkt im Cockpit; gespeichert wird über das App-Fenster.

@@ -19,7 +19,8 @@ select json_build_object(
     -- kurs_zugriff gibt es seit 20261113160000 nicht mehr (aufgegangen in kt_trainer)
     'kt_migrationen',    (select coalesce(json_agg(t), '[]') from public.kt_migrationen t),
     'kt_trainer',        (select coalesce(json_agg(t), '[]') from public.kt_trainer t),
-    'kt_kurs_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_kurs_freigaben t)
+    'kt_kurs_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_kurs_freigaben t),
+    'kt_folien_notizen', (select coalesce(json_agg(t), '[]') from public.kt_folien_notizen t)
   ),
   'policies', (
     select json_agg(p order by p.schemaname, p.tablename, p.policyname)

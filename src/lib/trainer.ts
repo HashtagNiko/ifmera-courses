@@ -80,6 +80,21 @@ export async function freigabenLaden(kursIds: string[]): Promise<Freigabe[]> {
   return (data ?? []) as Freigabe[]
 }
 
+/** Die eigenen Freigaben: zu welchem fremden Kurs man welche Stufe hat. */
+export async function meineStufenLaden(ichId: string): Promise<Map<string, Stufe>> {
+  const { data, error } = await supabase
+    .from('kt_kurs_freigaben')
+    .select('kurs_id, stufe')
+    .eq('trainer_id', ichId)
+  if (error) throw new Error(error.message)
+  return new Map((data ?? []).map((f) => [f.kurs_id as string, f.stufe as Stufe]))
+}
+
+/** Darf man an diesem Kurs eigene Notizen schreiben? Besitzer immer, sonst ab Stufe "notizen". */
+export function darfNotizen(besitzerId: string, ichId: string, stufe: Stufe | undefined): boolean {
+  return besitzerId === ichId || stufe === 'notizen' || stufe === 'fassung'
+}
+
 /**
  * Legt eine Freigabe an oder ändert ihre Stufe.
  *
