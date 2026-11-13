@@ -24,6 +24,9 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   Originals, eigene Fassungen (öffnen, herunterladen, Quellen, neue Version, freigeben, löschen, Hinweis
   wenn die Grundlage neuer ist), für mich freigegebene Fassungen (herunterladen, Quellen, als Grundlage),
   Hochladen mit Prüfung von Deck und Zip. Ladefenster maskiert jede Beschriftung.
+- Neu: `npm run pruefen:fassungen`: Selbsttest auf dem echten Weg über die Storage-API unter Nikos
+  Sync-Anmeldung (Probe-Fassung anlegen, Deck und Zip hochladen, byte-gleich zurücklesen, ersetzen,
+  verbotene Datei und fremden Ordner abgelehnt, alles wieder gelöscht). Erster Lauf: 11 von 11, nichts übrig.
 - Neu: `npm run pruefen:rechte` (alle Rechte-Tests). Dabei aufgefallen: Test C zählte seit dem Hochladen
   der echten Quellpakete falsch (erwartete genau eine Datei unter `weg/quellen/`); korrigiert, Tests
   zählen nur noch ihre eigenen Testdaten. Lehre in `CLAUDE.md` §4 Nr. 4.
