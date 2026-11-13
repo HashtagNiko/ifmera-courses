@@ -150,7 +150,14 @@ Windows-Benutzervariable `SUPABASE_TOKEN_KURSTOOL` (gilt nur für „shnoozy-App
 - Ablaufdatum des Schlüssels steht in `OFFENE-FRAGEN.md`. Ab 14 Tagen vorher nennt Claude die
   Restlaufzeit in jedem Bericht.
 
-**GitHub:** `gh` ist angemeldet. Claude legt Branches an, mergt und pusht selbst (grün).
+**GitHub:** Claude legt Branches an, mergt und pusht selbst (grün). Das Repo gehört dem Konto
+`HashtagNiko`; aktives `gh`-Konto ist `HausBlick` (für andere Projekte) und darf **nicht** umgestellt
+werden. Push deshalb mit dem Schlüssel von `HashtagNiko`, ohne ihn auszugeben:
+
+```bash
+T=$(gh auth token --user HashtagNiko) && git -c credential.helper= \
+  -c "credential.helper=!f() { echo username=HashtagNiko; echo password=$T; }; f" push origin <branch>; unset T
+```
 
 ---
 
