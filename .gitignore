@@ -48,3 +48,7 @@ anlagen/
 *.pdf
 # Ausnahme: die Deck-Engine baut HTML; auch das bleibt draussen
 Tag*_Segment*.html
+
+# Lokale Sicherungen vor Datenbankaenderungen und Hilfsdateien (CLAUDE.md §4/§5)
+backup/
+tmp/
