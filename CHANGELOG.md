@@ -4,6 +4,8 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
 
 ## 2026-11-13 · Baustein 1 · Besitz und Rechte (Schritte A, B, C)
 
+**Abgeschlossen:** Laien-Test von Niko bestanden („passt“, 13.11.2026).
+
 - **Schritt A (hinzufügend, eingespielt 13.11.2026, Test live grün):** `20261113150000_kt_besitz_und_freigaben.sql` legt
   `kt_migrationen`, `kt_trainer` (Niko als Admin, übernommen aus `kurs_zugriff`), `kurse.besitzer_id`,
   `durchlaeufe.besitzer_id` und `kt_kurs_freigaben` an, dazu sechs Hilfsfunktionen. Bestehende Regeln
