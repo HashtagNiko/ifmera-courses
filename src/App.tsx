@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage'
 import TagebuchPage from './pages/TagebuchPage'
 import FreigabenPage from './pages/FreigabenPage'
 import NotizenPage from './pages/NotizenPage'
+import FassungenPage from './pages/FassungenPage'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="tagebuch" element={<TagebuchPage />} />
         <Route path="freigaben" element={<FreigabenPage />} />
         <Route path="notizen/:tagId" element={<NotizenPage />} />
+        <Route path="fassungen/:tagId" element={<FassungenPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

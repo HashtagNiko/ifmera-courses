@@ -100,7 +100,8 @@ Claude meldet nie selbst „fertig“. Ein Baustein ist abgeschlossen, wenn Niko
    `.gitignore`). Neue `kt_`-Tabellen trägt Claude dort direkt nach dem Einspielen ein, entfernte
    Tabellen nimmt er heraus. Sicherung und Migration laufen in **einem** Befehl, verkettet mit `&&`:
    Scheitert die Sicherung, startet die Migration nicht (Lehre vom 13.11.2026).
-   Nach jeder Migration laufen **alle** Rechte-Tests, nicht nur der neue.
+   Nach jeder Migration **und nach jedem Sync, der neue Dateien hochlädt,** laufen **alle** Rechte-Tests:
+   `npm run pruefen:rechte`. Tests zählen nur ihre eigenen Testdaten, nie echte.
    Jede Migration beginnt mit `set local lock_timeout = '3s'`: Muss sie auf eine Sperre warten, bricht
    sie ab, statt Anmeldungen im Prüfungstool aufzuhalten.
 5. **Rechte-Tests** in `supabase/tests/` laufen in einer Transaktion, die am Ende zurückgerollt wird.

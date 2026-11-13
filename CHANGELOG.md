@@ -2,6 +2,34 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 4, Teil 2 · Eigene Fassungen hochladen und freigeben
+
+- Migration `20261113210000_kt_deck_fassungen.sql` (hinzufügend, nach Sicherung eingespielt): Tabellen
+  `kt_deck_fassungen` und `kt_fassung_freigaben`, **eigener privater Bucket `fassungen`** (40 MB je Datei)
+  mit eigenen Regeln; die Regeln des Buckets `decks` bleiben unverändert (dort gilt die Admin-Regel für
+  verwaiste Dateien, die Fassungen nicht erfassen soll).
+- Regeln: Fassung nur sichtbar für Besitzer und per Freigabe, nur solange man den Kurs selbst sehen darf;
+  Anlegen ab Kursstufe „fassung“, Kopie einer Fassung nur mit Stufe „fassung“ an ihr; Freigabe nur an
+  Trainer mit Kurszugang, wirksam höchstens bis zur Kursstufe des Empfängers; Dateizugriff an den
+  Besitzer-Ordner gebunden; unbekannte Dateinamen gesperrt; id, Besitzer, Kurstag und Grundlage nach dem
+  Anlegen unveränderlich (Spaltenrechte); Grundlage nur vom selben Kurstag; Kurstage mit Fassungen nicht
+  löschbar; Längen-, Format- und Pfadprüfungen.
+- Zweiter Blick (Sub-Agent) **vor** dem Einspielen: fand zwei ernste Punkte in der App (Titel einer fremden
+  Fassung ungeschützt im Ladefenster; fremdes Deck liefe im Tool mit der Anmeldung des Betrachters) und
+  zwölf Verschärfungen der Regeln. Alle umgesetzt; fremde Fassungen lassen sich nur herunterladen
+  (OFFENE-FRAGEN Nr. 21).
+- Rechte-Test `20261113210000_kt_deck_fassungen_test.sql` (F01–F61); 17 Gegenproben, jede eingebaute
+  Schwäche wird erkannt (teils von der Selbstprüfung der Migration oder doppelt).
+- App: Seite „Fassungen“ je Kurstag (`/fassungen/:tagId`, Link „⧉ Fassungen“ mit Anzahl): Quellpaket des
+  Originals, eigene Fassungen (öffnen, herunterladen, Quellen, neue Version, freigeben, löschen, Hinweis
+  wenn die Grundlage neuer ist), für mich freigegebene Fassungen (herunterladen, Quellen, als Grundlage),
+  Hochladen mit Prüfung von Deck und Zip. Ladefenster maskiert jede Beschriftung.
+- Neu: `npm run pruefen:rechte` (alle Rechte-Tests). Dabei aufgefallen: Test C zählte seit dem Hochladen
+  der echten Quellpakete falsch (erwartete genau eine Datei unter `weg/quellen/`); korrigiert, Tests
+  zählen nur noch ihre eigenen Testdaten. Lehre in `CLAUDE.md` §4 Nr. 4.
+- Ehrlich vermerkt: Der zweite Blick vor dem Einspielen fehlte bei `20261113180000` und `20261113200000`
+  (je nur neue Spalten) und erfolgte bei `20261113190000` erst mit dem Code danach.
+
 ## 2026-11-13 · Baustein 4, Teil 1 · Quellpakete
 
 - Migration `20261113200000_kt_quellpakete.sql` (hinzufügend, nach Sicherung eingespielt): `kurstage`

@@ -89,6 +89,19 @@ Das Skript vergleicht jede Trainer-Fassung per sha256 mit dem Stand im Bucket
 und lädt nur Geändertes hoch. Danach ist die neue Fassung sofort im Tool
 sichtbar.
 
+## Mehrere Trainer
+
+Wer das Tool nutzt, steht in `kt_trainer`; jeder Kurs gehört einem Trainer und kann unter „Freigaben“
+anderen Trainern freigegeben werden (Stufen: ansehen & herunterladen, + eigene Notizen, + eigene Kopie
+bearbeiten). Eigene Notizen erscheinen im Cockpit statt des Originals. Eigene Fassungen (bearbeitete
+Kopien eines Tages, Deck + Quellpaket) liegen im eigenen Bucket `fassungen` und sind nur für ihren
+Besitzer und für die Trainer sichtbar, denen er sie freigibt. Einzelheiten: `SPEC.md`; Arbeitsregeln:
+`CLAUDE.md`.
+
+Prüfwerkzeuge: `npm test` (Unit-Tests, teils mit der echten Engine), `npm run pruefen:downloads` (alle
+angebotenen Dateien auf dem echten Weg), `npm run pruefen:quellpakete` (jedes Quellpaket nachbauen und mit
+dem Deck vergleichen), Rechte-Tests in `supabase/tests/` (`node scripts/sql.mjs <datei>`).
+
 ## Herunterladen
 
 Jede Kachel hat unten Knöpfe für die Trainerfassung (HTML), die

@@ -79,9 +79,11 @@ export async function deckLaden(
   deckPfad: string,
   anpassung?: DeckAnpassung,
   kurstagId?: string,
+  /** "fassungen" für eigene Fassungen (Baustein 4) */
+  bucket: Bucket = 'decks',
 ): Promise<string> {
   const notizen = notizenHolen(kurstagId) // läuft parallel zum Herunterladen des Decks
-  const antwort = await ausDemBucket(deckPfad)
+  const antwort = await ausDemBucket(deckPfad, bucket)
   const angepasst = mitNotizen(deckAnpassen(await antwort.text(), anpassung), await notizen)
   const html = new Blob([ergaenzeVollbild(angepasst)], { type: 'text/html;charset=utf-8' })
   return URL.createObjectURL(html)
@@ -120,6 +122,9 @@ export interface KurstagMitKurs {
   titel: string | null
   tagebuch_titel: string | null
   deck_pfad: string | null
+  liefername: string | null
+  quellen_pfad: string | null
+  quellen_hash: string | null
   kurs_id: string
   kurse: { name: string; besitzer_id: string } | null
 }
@@ -127,20 +132,22 @@ export interface KurstagMitKurs {
 export async function kurstagLaden(id: string): Promise<KurstagMitKurs | null> {
   const { data, error } = await supabase
     .from('kurstage')
-    .select('id, art, nummer, titel, tagebuch_titel, deck_pfad, kurs_id, kurse(name, besitzer_id)')
+    .select('id, art, nummer, titel, tagebuch_titel, deck_pfad, liefername, quellen_pfad, quellen_hash, kurs_id, kurse(name, besitzer_id)')
     .eq('id', id)
     .maybeSingle()
   if (error) throw new Error(error.message)
   return data as KurstagMitKurs | null
 }
 
-/** Holt eine Datei aus dem privaten Bucket, am Cache vorbei (siehe deckLaden). */
-async function ausDemBucket(pfad: string): Promise<Response> {
+export type Bucket = 'decks' | 'fassungen'
+
+/** Holt eine Datei aus einem privaten Bucket, am Cache vorbei (siehe deckLaden). */
+async function ausDemBucket(pfad: string, bucket: Bucket = 'decks'): Promise<Response> {
   const { data: sitzung } = await supabase.auth.getSession()
   const token = sitzung.session?.access_token
   if (!token || !supabaseUrl || !supabaseAnonKey) throw new Error('Nicht angemeldet.')
   const kodiert = pfad.split('/').map(encodeURIComponent).join('/')
-  const antwort = await fetch(`${supabaseUrl}/storage/v1/object/decks/${kodiert}?v=${Date.now()}`, {
+  const antwort = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${kodiert}?v=${Date.now()}`, {
     headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnonKey },
     cache: 'no-store',
   })
@@ -174,11 +181,12 @@ export async function dateiHerunterladen(
   anpassung?: DeckAnpassung,
   /** nur bei der Trainerfassung: eigene Notizen mit hineinnehmen */
   kurstagId?: string,
+  bucket: Bucket = 'decks',
 ): Promise<void> {
   // Nur HTML wird angepasst; PDF und Zip kommen unverändert
   const istHtml = dateiname.endsWith('.html')
   const notizen = istHtml ? notizenHolen(kurstagId) : Promise.resolve([])
-  const antwort = await ausDemBucket(pfad)
+  const antwort = await ausDemBucket(pfad, bucket)
   // Supabase liefert HTML als text/plain aus; der Typ richtet sich deshalb nach der Endung.
   const inhalt = istHtml
     ? mitNotizen(deckAnpassen(await antwort.text(), anpassung), await notizen)

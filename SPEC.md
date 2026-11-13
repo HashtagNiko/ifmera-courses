@@ -162,8 +162,17 @@ dabei nur seine eigene Kopie.
 - Eine **Fassung** besteht aus dem gebauten Deck **und** ihrem Quellpaket. Nur so kann ein anderer
   Trainer sie wiederum kopieren und weiterbearbeiten.
 - `kt_deck_fassungen`: Besitzer, Kurstag, Grundlage (Original oder andere Fassung), Stand der Grundlage
-  (`basis_hash`), Pfade und Prüfsummen von Deck und Quellpaket, hochgeladen am, Bemerkung. Ablage im
-  Bucket unter `fassungen/<besitzer-id>/…`; schreiben darf nur der Besitzer.
+  (`grundlage_hash`), Titel, Bemerkung, Pfade und Prüfsummen von Deck und Quellpaket. Ablage in einem
+  **eigenen Bucket `fassungen`** unter `<besitzer-id>/<fassung-id>/deck.html|quellen.zip`; schreiben darf
+  nur der Besitzer, und nur zu einer eigenen Fassung. Eigener Bucket statt eines Ordners in `decks`, weil
+  dort die Admin-Regel für verwaiste Dateien gilt: Fassungen eines Trainers soll auch der Admin nicht sehen.
+- **Annahmen (13.11.2026, Claude; Niko war unterwegs):** Fassungen sieht man nur, solange man den Kurs selbst
+  sehen darf (nimmt der Kursbesitzer die Freigabe zurück, verschwinden auch die eigenen Fassungen dieses
+  Kurses aus dem Tool, sie beruhen auf seinen Inhalten). Freigeben darf man eine Fassung nur an Trainer, die
+  den Kurs selbst sehen dürfen. Der Hinweis „Grundlage wurde geändert“ verschwindet, wenn der Besitzer der
+  Fassung „Ist erledigt“ klickt.
+- Quellpakete gibt es schon für alle Tage (Teil 1, seit 13.11.2026), Knopf „Quellen“ ab Stufe `fassung`.
+- Seite „Fassungen“ je Kurstag (`/fassungen/:tagId`, Link „⧉ Fassungen“ in der Kachel).
 - `kt_fassung_freigaben`: Fassung, Trainer, Stufe (`nutzen` = ansehen und herunterladen, `fassung` =
   zusätzlich das Quellpaket laden und eine eigene Kopie anlegen). Freigeben darf nur der Besitzer der Fassung.
 - App, je Kurstag „Eigene Fassung“: Quellpaket der Grundlage laden; fertiges Deck und Quellpaket

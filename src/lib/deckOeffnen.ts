@@ -1,5 +1,5 @@
-import { deckLaden } from './kurse'
-import type { DeckAnpassung } from './deckAnpassung'
+import { deckLaden, type Bucket } from './kurse'
+import { escapeHtml, type DeckAnpassung } from './deckAnpassung'
 
 /**
  * Öffnet ein Deck in einem eigenen Fenster.
@@ -18,6 +18,8 @@ export function deckOeffnen(
   anpassung?: DeckAnpassung,
   /** Kurstag, dessen eigene Notizen ins Cockpit sollen */
   kurstagId?: string,
+  /** "fassungen" für eigene Fassungen (Baustein 4) */
+  bucket: Bucket = 'decks',
 ): void {
   const fenster = window.open('', '_blank')
   if (!fenster) {
@@ -30,7 +32,7 @@ export function deckOeffnen(
   fenster.document.write(ladeSeite(beschriftung))
   fenster.document.close()
 
-  deckLaden(deckPfad, anpassung, kurstagId)
+  deckLaden(deckPfad, anpassung, kurstagId, bucket)
     .then((url) => {
       fenster.location.href = url
       // Erst freigeben, wenn das Deck sicher geladen ist; ein zu frühes
@@ -42,10 +44,15 @@ export function deckOeffnen(
     })
 }
 
+/**
+ * Ladehinweis im neuen Fenster. Die Beschriftung wird maskiert: Sie kann ein Titel sein, den ein anderer
+ * Trainer vergeben hat (Fassungen), und dieses Fenster läuft mit der Herkunft der App.
+ */
 function ladeSeite(beschriftung: string): string {
+  const text = escapeHtml(beschriftung)
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">
-<title>${beschriftung}</title></head>
+<title>${text}</title></head>
 <body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
 background:#00444a;color:#faf5eb;font-family:Ubuntu,Arial,sans-serif;font-size:15px">
-${beschriftung} wird geladen …</body></html>`
+${text} wird geladen …</body></html>`
 }

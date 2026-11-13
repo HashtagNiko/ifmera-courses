@@ -244,7 +244,7 @@ set local role authenticated;
 do $$
 declare n int;
 begin
-  select count(*) into n from storage.objects where bucket_id = 'decks' and name like 'weg/quellen/%';
+  select count(*) into n from storage.objects where bucket_id = 'decks' and name = 'weg/quellen/kt-test.zip'; -- nur die Testdatei: echte Quellpakete liegen dort auch
   if n <> 1 then raise exception 'C39: Co sieht mit Stufe fassung die Quellen nicht (%)', n; end if;
 end
 $$;

@@ -12,6 +12,7 @@ import {
   type Kurstag,
 } from '../lib/kurse'
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
+import { fassungenZaehlen } from '../lib/fassungen'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 import { useIch } from '../lib/TrainerContext'
 import { darfFassung, darfNotizen, meineStufenLaden, trainerLaden, type Stufe } from '../lib/trainer'
@@ -33,6 +34,14 @@ export default function DashboardPage() {
   const [namen, setNamen] = useState<Map<string, string>>(new Map())
 
   const [stufen, setStufen] = useState<Map<string, Stufe>>(new Map())
+  const [fassungsZahl, setFassungsZahl] = useState<Map<string, number>>(new Map())
+
+  // Wie viele Fassungen man zu jedem Tag sehen darf (eigene und freigegebene)
+  useEffect(() => {
+    fassungenZaehlen(tage.map((t) => t.id))
+      .then(setFassungsZahl)
+      .catch(() => setFassungsZahl(new Map()))
+  }, [tage])
 
   // Namen der anderen Trainer, für den Hinweis bei freigegebenen Kursen,
   // und die eigenen Stufen (wer bei fremden Kursen Notizen schreiben darf)
@@ -155,6 +164,7 @@ export default function DashboardPage() {
                     anpassung={anpassung}
                     notizen={Boolean(kurs && darfNotizen(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
                     fassung={Boolean(kurs && darfFassung(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
+                    fassungen={fassungsZahl.get(t.id) ?? 0}
                   />
                 ))}
             </div>
@@ -218,6 +228,7 @@ function Kachel({
   anpassung,
   notizen,
   fassung,
+  fassungen,
 }: {
   tag: TagImSegment
   vermittelt: boolean
@@ -226,6 +237,8 @@ function Kachel({
   notizen: boolean
   /** Darf der Angemeldete Quellpakete laden (Stufe "fassung" oder Besitzer)? */
   fassung: boolean
+  /** Anzahl sichtbarer Fassungen (eigene und freigegebene) zu diesem Tag */
+  fassungen: number
 }) {
   const inhalt = (
     <>
@@ -303,6 +316,15 @@ function Kachel({
               title="Eigene Notizen zu den Folien dieses Tages"
             >
               ✎ Notizen
+            </Link>
+          )}
+          {(fassung || fassungen > 0) && tag.deck_pfad && (
+            <Link
+              to={`/fassungen/${tag.id}`}
+              className={`${notizen ? '' : 'ml-auto '}font-medium text-ifm-blue underline-offset-2 hover:underline`}
+              title="Eigene Fassungen dieses Tages: Quellpaket laden, bearbeitete Fassung hochladen, freigeben"
+            >
+              ⧉ Fassungen{fassungen > 0 ? ` (${fassungen})` : ''}
             </Link>
           )}
         </div>

@@ -20,7 +20,9 @@ select json_build_object(
     'kt_migrationen',    (select coalesce(json_agg(t), '[]') from public.kt_migrationen t),
     'kt_trainer',        (select coalesce(json_agg(t), '[]') from public.kt_trainer t),
     'kt_kurs_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_kurs_freigaben t),
-    'kt_folien_notizen', (select coalesce(json_agg(t), '[]') from public.kt_folien_notizen t)
+    'kt_folien_notizen', (select coalesce(json_agg(t), '[]') from public.kt_folien_notizen t),
+    'kt_deck_fassungen', (select coalesce(json_agg(t), '[]') from public.kt_deck_fassungen t),
+    'kt_fassung_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_fassung_freigaben t)
   ),
   'policies', (
     select json_agg(p order by p.schemaname, p.tablename, p.policyname)
@@ -45,5 +47,11 @@ select json_build_object(
   'bucket_dateien', (
     select json_agg(json_build_object('name', o.name, 'groesse', o.metadata->>'size', 'geaendert', o.updated_at) order by o.name)
     from storage.objects o where o.bucket_id = 'decks'
+  ),
+  -- Fassungen anderer Trainer: nur die Liste; die Dateien selbst liegen nur im Bucket (vor einem
+  -- Rueckbau mit service_role sichern)
+  'fassungen_dateien', (
+    select json_agg(json_build_object('name', o.name, 'groesse', o.metadata->>'size', 'geaendert', o.updated_at) order by o.name)
+    from storage.objects o where o.bucket_id = 'fassungen'
   )
 ) as sicherung;
