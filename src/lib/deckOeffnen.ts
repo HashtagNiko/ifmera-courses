@@ -1,4 +1,5 @@
 import { deckLaden } from './kurse'
+import type { DeckAnpassung } from './deckAnpassung'
 
 /**
  * Öffnet ein Deck in einem eigenen Fenster.
@@ -11,7 +12,7 @@ import { deckLaden } from './kurse'
  * Trainer-Cockpit selbst als zweites Fenster öffnet und die Folien darüber
  * steuert.
  */
-export function deckOeffnen(deckPfad: string, beschriftung: string): void {
+export function deckOeffnen(deckPfad: string, beschriftung: string, anpassung?: DeckAnpassung): void {
   const fenster = window.open('', '_blank')
   if (!fenster) {
     window.alert(
@@ -23,7 +24,7 @@ export function deckOeffnen(deckPfad: string, beschriftung: string): void {
   fenster.document.write(ladeSeite(beschriftung))
   fenster.document.close()
 
-  deckLaden(deckPfad)
+  deckLaden(deckPfad, anpassung)
     .then((url) => {
       fenster.location.href = url
       // Erst freigeben, wenn das Deck sicher geladen ist; ein zu frühes

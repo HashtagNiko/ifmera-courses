@@ -1,4 +1,5 @@
 import { supabase, supabaseAnonKey, supabaseUrl } from './supabase'
+import { deckAnpassen, type DeckAnpassung } from './deckAnpassung'
 
 export interface Kurstag {
   id: string
@@ -70,9 +71,10 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
  * Zeitstempel in der Adresse den CDN-Cache; deshalb nicht mehr
  * `storage.download()`, das beides nicht kennt.
  */
-export async function deckLaden(deckPfad: string): Promise<string> {
+export async function deckLaden(deckPfad: string, anpassung?: DeckAnpassung): Promise<string> {
   const antwort = await ausDemBucket(deckPfad)
-  const html = new Blob([ergaenzeVollbild(await antwort.text())], { type: 'text/html;charset=utf-8' })
+  const angepasst = deckAnpassen(await antwort.text(), anpassung)
+  const html = new Blob([ergaenzeVollbild(angepasst)], { type: 'text/html;charset=utf-8' })
   return URL.createObjectURL(html)
 }
 
@@ -104,14 +106,22 @@ export function downloadName(tag: Kurstag, art: DownloadArt): string {
 }
 
 /**
- * Lädt eine Datei aus dem Bucket herunter. Die Datei kommt unverändert, so wie sie
- * im Kursordner liegt (ohne den Vollbild-Knopf, den nur das Öffnen im Tool ergänzt).
+ * Lädt eine Datei aus dem Bucket herunter, ohne den Vollbild-Knopf, den nur das
+ * Öffnen im Tool ergänzt. HTML-Dateien bekommen die Anpassungen (Name in der
+ * Fußzeile bei fremden Decks, unsichtbare Markierung); ein PDF bleibt unverändert,
+ * dort steht weiter der Name des Besitzers.
  */
-export async function dateiHerunterladen(pfad: string, dateiname: string): Promise<void> {
+export async function dateiHerunterladen(
+  pfad: string,
+  dateiname: string,
+  anpassung?: DeckAnpassung,
+): Promise<void> {
   const antwort = await ausDemBucket(pfad)
+  const istPdf = dateiname.endsWith('.pdf')
   // Supabase liefert HTML als text/plain aus; der Typ richtet sich deshalb nach der Endung.
-  const typ = dateiname.endsWith('.pdf') ? 'application/pdf' : 'text/html;charset=utf-8'
-  const url = URL.createObjectURL(new Blob([await antwort.arrayBuffer()], { type: typ }))
+  const inhalt = istPdf ? await antwort.arrayBuffer() : deckAnpassen(await antwort.text(), anpassung)
+  const typ = istPdf ? 'application/pdf' : 'text/html;charset=utf-8'
+  const url = URL.createObjectURL(new Blob([inhalt], { type: typ }))
   const link = document.createElement('a')
   link.href = url
   link.download = dateiname

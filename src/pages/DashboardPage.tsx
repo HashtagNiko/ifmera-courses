@@ -14,6 +14,7 @@ import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 import { useIch } from '../lib/TrainerContext'
 import { trainerLaden } from '../lib/trainer'
+import type { DeckAnpassung } from '../lib/deckAnpassung'
 
 /** Kurstag mit dem Segment, unter dem er einsortiert wird. */
 type TagImSegment = Kurstag & { segmentEffektiv: number }
@@ -77,6 +78,9 @@ export default function DashboardPage() {
   const segmente = [...new Set(tage.map((t) => t.segmentEffektiv))].sort((a, b) => a - b)
   const kurs = kurse.find((k) => k.id === aktiverKurs)
   const fremderKurs = kurs && kurs.besitzer_id !== ich.id
+  // Fremdes Deck: in der Fußzeile der eigenen Kopie steht der eigene Name (SPEC.md, Baustein 2)
+  const anpassung: DeckAnpassung =
+    fremderKurs && kurs ? { fussName: { von: namen.get(kurs.besitzer_id) ?? '', nach: ich.anzeigename } } : {}
 
   return (
     <div className="min-h-full bg-ifm-cream">
@@ -137,7 +141,7 @@ export default function DashboardPage() {
               {tage
                 .filter((t) => t.segmentEffektiv === seg)
                 .map((t) => (
-                  <Kachel key={t.id} tag={t} vermittelt={vermittelt.has(t.id)} />
+                  <Kachel key={t.id} tag={t} vermittelt={vermittelt.has(t.id)} anpassung={anpassung} />
                 ))}
             </div>
           </section>
@@ -194,7 +198,15 @@ const FARBEN: Record<Kurstag['art'], { offen: string; erledigt: string }> = {
   },
 }
 
-function Kachel({ tag, vermittelt }: { tag: TagImSegment; vermittelt: boolean }) {
+function Kachel({
+  tag,
+  vermittelt,
+  anpassung,
+}: {
+  tag: TagImSegment
+  vermittelt: boolean
+  anpassung: DeckAnpassung
+}) {
   const inhalt = (
     <>
       <span className="flex items-center gap-1.5 text-xs font-medium text-ifm-gray">
@@ -233,7 +245,7 @@ function Kachel({ tag, vermittelt }: { tag: TagImSegment; vermittelt: boolean })
     <div className={rahmen}>
       {tag.deck_pfad ? (
         <button
-          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag))}
+          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag), anpassung)}
           className="block w-full flex-1 text-left p-4 cursor-pointer"
         >
           {inhalt}
@@ -252,6 +264,7 @@ function Kachel({ tag, vermittelt }: { tag: TagImSegment; vermittelt: boolean })
               erklaerung={erklaerung}
               pfad={pfad!}
               dateiname={downloadName(tag, art)}
+              anpassung={anpassung}
             />
           ))}
         </div>
@@ -265,12 +278,15 @@ function DownloadKnopf({
   erklaerung,
   pfad,
   dateiname,
+  anpassung,
 }: {
   name: string
   erklaerung: string
   pfad: string
   dateiname: string
+  anpassung: DeckAnpassung
 }) {
+  const ich = useIch()
   const [laedt, setLaedt] = useState(false)
   return (
     <button
@@ -278,7 +294,9 @@ function DownloadKnopf({
       disabled={laedt}
       onClick={() => {
         setLaedt(true)
-        dateiHerunterladen(pfad, dateiname)
+        // Unsichtbare Markierung, damit sich eine weitergegebene Kopie zuordnen lässt
+        const markierung = `${ich.anzeigename}, heruntergeladen am ${new Date().toLocaleString('de-DE')} über courses.shnoozy.top`
+        dateiHerunterladen(pfad, dateiname, { ...anpassung, markierung })
           .catch((e: Error) => window.alert(`Herunterladen fehlgeschlagen: ${e.message}`))
           .finally(() => setLaedt(false))
       }}

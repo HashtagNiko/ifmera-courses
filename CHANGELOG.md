@@ -2,6 +2,22 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 2 · Name in der Fußzeile, Markierung, Prüfwerkzeuge
+
+- Auf Nikos „ja“: Öffnet oder lädt ein Trainer ein fremdes Deck, steht in der Fußzeile seiner Kopie sein
+  Anzeigename statt des Besitzers (nur die vollständige Fußzeile wird ersetzt, der Name wird maskiert).
+  Jede heruntergeladene HTML-Datei bekommt eine unsichtbare Markierung (Kommentar + `meta`) mit Name,
+  Datum und Uhrzeit. PDFs bleiben unverändert.
+- Neu: Vitest (`npm test`), 12 Tests für Fußzeile, Markierung und Dateinamen; 4 Gegenproben (Name
+  ungeprüft eingesetzt, Name überall ersetzt, Kommentar nicht entschärft, meta ohne Maskierung) lassen
+  die Tests jeweils scheitern.
+- Neu: `npm run pruefen:downloads` holt jede angebotene Datei unter Nikos Sync-Anmeldung so, wie es die
+  App tut, und vergleicht die Prüfsumme. Erster Lauf: 109 Dateien (44 Trainer, 32 Teilnehmer, 33 PDF),
+  alle in Ordnung.
+- Dateien: `src/lib/deckAnpassung.ts`, `src/lib/deckAnpassung.test.ts`, `src/lib/kurse.ts`,
+  `src/lib/deckOeffnen.ts`, `src/pages/DashboardPage.tsx`, `scripts/downloads-pruefen.mjs`,
+  `package.json`, `package-lock.json`, `OFFENE-FRAGEN.md`
+
 ## 2026-11-13 · Baustein 2 · Herunterladen
 
 - Migration `20261113180000_kt_downloads.sql` (hinzufügend, eingespielt nach Sicherung): `kurstage`
