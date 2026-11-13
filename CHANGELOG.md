@@ -16,6 +16,10 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   Sitzung des Deck-Syncs beendet.
 - Sync: kein `process.exit()` mehr nach Netzwerkanfragen (Absturz unter Windows), klare Meldung, wenn
   die gespeicherte Sitzung fehlt.
+- Erster Sync mit Downloads (13.11.2026, nach Nikos neuer Anmeldung des Syncs): WEG 16/16 Tage,
+  WEG kompakt 8/8 (ein Tag nur mit PDF: die ausgegebene Teilnehmer-HTML weicht von der gebauten ab),
+  H&G kompakt 5/5 (Lieferordner des H&G-Kurses), H&G 4/15 (Segment 1 und 3). 65 Dateien hochgeladen,
+  Bucket jetzt rund 276 MB. Test C danach grün.
 - Dateien: `supabase/migrations/20261113180000_kt_downloads.sql`, `supabase/rueckbau/…`,
   `supabase/tests/20261113160000_kt_regeln_nach_besitz_test.sql`, `scripts/sync-decks.mjs`,
   `kurse.config.json`, `src/lib/kurse.ts`, `src/lib/AuthContext.tsx`, `src/pages/DashboardPage.tsx`,

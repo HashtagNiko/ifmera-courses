@@ -17,7 +17,8 @@
     "slug": "hg-kompakt",
     "name": "H&G kompakt",
     "ordner": "50_H&G-Kurs/kompakt",
-    "tagebuch": "40_H&G_Projekt/Themenübersicht Trainertagebuch - H&G kompakt.docx"
+    "tagebuch": "40_H&G_Projekt/Themenübersicht Trainertagebuch - H&G kompakt.docx",
+    "lieferung": "../H&G-Kurs/2. Slides"
   },
   {
     "slug": "weg-kompakt",

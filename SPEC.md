@@ -107,7 +107,8 @@ kann nichts ändern. Ohne Freigabe sieht es gar keinen Kurs.
   `<kürzel>/teilnehmer/` und `<kürzel>/pdf/`. Nur Geändertes, erkannt an der Prüfsumme, wie bei den Trainer-Decks.
 - **Nur Ausgegebenes:** Teilnehmerfassung und PDF gelten als ausgegeben, wenn dieselbe Datei im
   Lieferordner „2. Slides“ liegt (`lieferung` in `kurse.config.json`); Ordner mit „_“ vorn zählen nicht.
-  Nicht Ausgegebenes bekommt keinen Knopf. H&G kompakt hat noch keinen Lieferordner (OFFENE-FRAGEN Nr. 16).
+  Nicht Ausgegebenes bekommt keinen Knopf. H&G kompakt nutzt den Lieferordner des H&G-Kurses
+  (OFFENE-FRAGEN Nr. 16).
 - `kurstage` bekommt dafür Liefername, Pfade und Prüfsummen.
 - Je Kurstag bis zu drei Knöpfe: Trainer, Teilnehmer, PDF.
 - **Annahme:** Dateiname wie in „2. Slides“ (Liefername), sonst `Tag <n>`; die Trainerfassung bekommt
