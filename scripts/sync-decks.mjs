@@ -21,6 +21,14 @@
  * Verglichen wird per sha256: hochgeladen wird nur, was sich seit dem letzten
  * Lauf wirklich geaendert hat. Die Quelle bleibt der lokale Ordner, damit
  * OneDrive und Tool nicht auseinanderlaufen.
+ *
+ * Teilnehmerfassung und PDF (Baustein 2): Hochgeladen wird nur, was Niko
+ * tatsaechlich ausgibt. Massgeblich ist der Lieferordner "2. Slides" (Feld
+ * "lieferung" in kurse.config.json): Liegt dort dieselbe Datei (gleiche
+ * Pruefsumme), gilt sie als ausgegeben und bekommt ihren Liefernamen. Ordner,
+ * die mit "_" beginnen ("_voll (nicht ausgegeben)"), zaehlen nicht. Liegt eine
+ * Datei nicht (mehr) dort, verschwindet ihr Download-Knopf; die Datei im
+ * Bucket bleibt liegen.
  */
 import { createHash } from 'node:crypto'
 import { readFile, readdir, stat, writeFile, open } from 'node:fs/promises'
@@ -73,10 +81,13 @@ const supabase = createClient(SUPABASE_URL, ANON_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
 
-await anmelden()
-
-for (const kurs of kurse) {
-  await synchronisiereKurs(kurs)
+// Nach einer Netzwerkanfrage kein process.exit(): Node bricht unter Windows sonst
+// mit "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" ab. Fehler setzen
+// deshalb nur den Exit-Code.
+if (await anmelden()) {
+  for (const kurs of kurse) {
+    await synchronisiereKurs(kurs)
+  }
 }
 
 /** Gleicht einen Kurs ab: Decks suchen, Neues hochladen, Tabelle nachziehen. */
@@ -96,6 +107,13 @@ async function synchronisiereKurs(kurs) {
   }
   console.log(`  ${decks.length} Trainer-Decks gefunden.`)
 
+  const lieferung = await lieferIndex(kurs)
+  console.log(
+    lieferung
+      ? `  Lieferordner: ${lieferung.anzahl} Dateien (ausgegeben ist, was dort liegt).`
+      : '  Kein Lieferordner: keine Teilnehmerfassungen und PDFs zum Herunterladen.',
+  )
+
   const kursId = await kursAnlegen(kurs)
   if (!kursId) return
 
@@ -103,52 +121,80 @@ async function synchronisiereKurs(kurs) {
   // Kurstag 1) und wuerden die Pruefsummen sonst ueberschreiben.
   const { data: bestand } = await supabase
     .from('kurstage')
-    .select('nummer, deck_hash')
+    .select('nummer, deck_hash, teilnehmer_hash, pdf_hash')
     .eq('kurs_id', kursId)
     .eq('art', 'kurstag')
 
-  const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z.deck_hash]))
-
-  let geladen = 0
-  let uebersprungen = 0
+  const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z]))
+  const zahl = { trainer: 0, teilnehmer: 0, pdf: 0, unveraendert: 0, ausgegeben: 0 }
 
   for (const deck of decks.sort((a, b) => a.nummer - b.nummer)) {
-    const inhalt = await readFile(deck.pfad)
-    const hash = createHash('sha256').update(inhalt).digest('hex')
-    const zielPfad = `${kurs.slug}/trainer/${basename(deck.pfad)}`
-    // Die Datei laden wir nur bei echter Aenderung; Titel und Segmentname
-    // schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
-    const dateiNeu = ERZWINGEN || bekannt.get(deck.nummer) !== hash
+    const alt = bekannt.get(deck.nummer) ?? {}
+    const trainer = await lesen(deck.pfad)
+    const teilnehmer = deck.teilnehmerPfad ? await lesen(deck.teilnehmerPfad) : null
+    const pdf = deck.pdfPfad ? await lesen(deck.pdfPfad) : null
 
-    if (dateiNeu) {
-      console.log(`  Tag ${deck.nummer}: geaendert -> ${zielPfad} (${mb(inhalt.length)})`)
+    // Ausgegeben ist, was im Lieferordner liegt; von dort kommt auch der Name.
+    const nameTeilnehmer = teilnehmer && lieferung ? await lieferung.finde(teilnehmer) : null
+    const namePdf = pdf && lieferung ? await lieferung.finde(pdf) : null
+    const nameTrainer = lieferung ? await lieferung.finde(trainer) : null
+    const liefername = nameTeilnehmer ?? namePdf ?? nameTrainer
+
+    // Die Dateien laden wir nur bei echter Aenderung; Titel, Segmentname und
+    // Liefername schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
+    const schritte = [
+      {
+        art: 'Trainer',
+        datei: trainer,
+        ziel: `${kurs.slug}/trainer/${basename(deck.pfad)}`,
+        neu: ERZWINGEN || alt.deck_hash !== trainer.hash,
+        typ: 'text/html; charset=utf-8',
+      },
+      nameTeilnehmer && {
+        art: 'Teilnehmer',
+        datei: teilnehmer,
+        ziel: `${kurs.slug}/teilnehmer/${basename(deck.teilnehmerPfad)}`,
+        neu: ERZWINGEN || alt.teilnehmer_hash !== teilnehmer.hash,
+        typ: 'text/html; charset=utf-8',
+      },
+      namePdf && {
+        art: 'PDF',
+        datei: pdf,
+        ziel: `${kurs.slug}/pdf/${basename(deck.pdfPfad)}`,
+        neu: ERZWINGEN || alt.pdf_hash !== pdf.hash,
+        typ: 'application/pdf',
+      },
+    ].filter(Boolean)
+
+    for (const s of schritte.filter((s) => s.neu)) {
+      console.log(`  Tag ${deck.nummer}: ${s.art} geaendert -> ${s.ziel} (${mb(s.datei.inhalt.length)})`)
     }
+    if (nameTeilnehmer || namePdf) zahl.ausgegeben++
 
     if (TROCKEN) {
-      dateiNeu ? geladen++ : uebersprungen++
+      for (const s of schritte) s.neu ? zahl[s.art.toLowerCase()]++ : zahl.unveraendert++
       continue
     }
 
-    if (dateiNeu) {
+    let fehler = false
+    for (const s of schritte.filter((s) => s.neu)) {
       // cacheControl '0': Ohne Angabe liefert Supabase die Datei mit
       // "max-age=3600" aus, und Browser wie CDN halten ein neues Deck dann bis zu
       // einer Stunde zurueck. Niko sah am 04.10.2026 nach einem Update noch die
       // alte Fassung. Die App laedt zusaetzlich mit cache: 'no-store'.
-      const { error: uploadFehler } = await supabase.storage
+      const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(zielPfad, inhalt, {
-          contentType: 'text/html; charset=utf-8',
-          upsert: true,
-          cacheControl: '0',
-        })
-
-      if (uploadFehler) {
-        console.error(`  Fehler beim Upload von Tag ${deck.nummer}: ${uploadFehler.message}`)
+        .upload(s.ziel, s.datei.inhalt, { contentType: s.typ, upsert: true, cacheControl: '0' })
+      if (error) {
+        console.error(`  Fehler beim Upload (${s.art}) von Tag ${deck.nummer}: ${error.message}`)
         process.exitCode = 1
-        continue
+        fehler = true
       }
     }
+    if (fehler) continue
 
+    const tn = schritte.find((s) => s.art === 'Teilnehmer')
+    const pd = schritte.find((s) => s.art === 'PDF')
     const zeile = {
       kurs_id: kursId,
       // Projekttage und Pruefung kommen aus dem Trainertagebuch-Import und
@@ -158,12 +204,20 @@ async function synchronisiereKurs(kurs) {
       segment: deck.segment,
       segment_titel: deck.segmentTitel,
       titel: deck.titel,
-      deck_pfad: zielPfad,
-      deck_hash: hash,
-      deck_groesse: inhalt.length,
+      deck_pfad: schritte[0].ziel,
+      deck_hash: trainer.hash,
+      deck_groesse: trainer.inhalt.length,
+      liefername,
+      // Nicht (mehr) ausgegeben: Feld leer, der Download-Knopf verschwindet.
+      teilnehmer_pfad: tn?.ziel ?? null,
+      teilnehmer_hash: tn?.datei.hash ?? null,
+      teilnehmer_groesse: tn?.datei.inhalt.length ?? null,
+      pdf_pfad: pd?.ziel ?? null,
+      pdf_hash: pd?.datei.hash ?? null,
+      pdf_groesse: pd?.datei.inhalt.length ?? null,
     }
-    // Das Stand-Datum nur anfassen, wenn die Datei wirklich neu ist.
-    if (dateiNeu) zeile.deck_aktualisiert_am = new Date().toISOString()
+    // Das Stand-Datum nur anfassen, wenn das Trainer-Deck wirklich neu ist.
+    if (schritte[0].neu) zeile.deck_aktualisiert_am = new Date().toISOString()
 
     const { error: schreibFehler } = await supabase
       .from('kurstage')
@@ -174,14 +228,14 @@ async function synchronisiereKurs(kurs) {
       process.exitCode = 1
       continue
     }
-    dateiNeu ? geladen++ : uebersprungen++
+    for (const s of schritte) s.neu ? zahl[s.art.toLowerCase()]++ : zahl.unveraendert++
   }
 
-  console.log(
-    TROCKEN
-      ? `  Probelauf: ${geladen} Deck(s) waeren geladen worden, ${uebersprungen} unveraendert.`
-      : `  Fertig: ${geladen} Deck(s) geladen, ${uebersprungen} unveraendert.`,
-  )
+  const bilanz =
+    `${zahl.trainer} Trainer-Deck(s), ${zahl.teilnehmer} Teilnehmerfassung(en), ${zahl.pdf} PDF(s)` +
+    ` ${TROCKEN ? 'waeren geladen worden' : 'geladen'}, ${zahl.unveraendert} Datei(en) unveraendert;` +
+    ` ${zahl.ausgegeben} von ${decks.length} Tagen ausgegeben.`
+  console.log(TROCKEN ? `  Probelauf: ${bilanz}` : `  Fertig: ${bilanz}`)
 }
 
 /**
@@ -232,23 +286,31 @@ async function anmelden() {
     if (!error && data.session) {
       await merkeSitzung(data.session)
       console.log(`Angemeldet als ${data.session.user.email} (gespeicherte Sitzung).`)
-      return
+      return true
     }
-    console.log('Gespeicherte Sitzung ist abgelaufen, bitte neu anmelden.')
+    console.log(
+      'Gespeicherte Sitzung ist abgelaufen oder wurde abgemeldet, bitte neu anmelden.',
+    )
   }
 
   const passwort =
     process.env.SUPABASE_PASSWORT ?? (await frageVerdeckt(`Passwort fuer ${EMAIL}: `))
+  if (passwort === null) {
+    process.exitCode = 1
+    return false
+  }
   const { data, error } = await supabase.auth.signInWithPassword({
     email: EMAIL,
     password: passwort,
   })
   if (error || !data.session) {
     console.error(`Anmeldung fehlgeschlagen: ${error?.message ?? 'unbekannter Fehler'}`)
-    process.exit(1)
+    process.exitCode = 1
+    return false
   }
   await merkeSitzung(data.session)
   console.log(`Angemeldet als ${data.session.user.email}.`)
+  return true
 }
 
 /** Legt nur das Refresh-Token ab, damit der naechste Lauf nicht wieder fragt. */
@@ -267,7 +329,7 @@ function frageVerdeckt(frage) {
       'Kein Terminal fuer die Passworteingabe. Einmal "npm run sync:decks" in einer ' +
         'normalen Konsole starten, danach genuegt die gespeicherte Sitzung.',
     )
-    process.exit(1)
+    return Promise.resolve(null)
   }
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true })
@@ -309,10 +371,15 @@ async function findeDecks(segmenteOrdner) {
       if (!(await stat(voll)).isFile()) continue
       const treffer = datei.match(/^Tag(\d+)_Segment(\d+)\.html$/i)
       if (!treffer) continue
+      // Teilnehmerfassung und PDF liegen daneben (teilnehmer.py, pdf.py)
+      const teilnehmerPfad = join(distOrdner, 'teilnehmer', datei)
+      const pdfPfad = join(distOrdner, 'teilnehmer', 'pdf', datei.replace(/\.html$/i, '.pdf'))
       gefunden.push({
         pfad: voll,
         nummer: Number(treffer[1]),
         segment: Number(treffer[2]),
+        teilnehmerPfad: existsSync(teilnehmerPfad) ? teilnehmerPfad : null,
+        pdfPfad: existsSync(pdfPfad) ? pdfPfad : null,
         ...(await leseTitel(voll)),
       })
     }
@@ -359,6 +426,56 @@ function zerlegeTitel(roh) {
   const titel = (teile.length > 1 ? teile[teile.length - 1] : entschluesselt).trim() || null
 
   return { titel, segmentTitel }
+}
+
+/** Liest eine Datei und berechnet ihre Pruefsumme. */
+async function lesen(pfad) {
+  const inhalt = await readFile(pfad)
+  return { inhalt, hash: createHash('sha256').update(inhalt).digest('hex') }
+}
+
+/**
+ * Verzeichnis des Lieferordners ("2. Slides"): welche Dateien Niko tatsaechlich
+ * ausgibt und unter welchem Namen. Gesucht wird nach gleicher Pruefsumme; damit
+ * nicht jede Datei gelesen werden muss, nur unter Dateien gleicher Groesse.
+ * Ordner, die mit "_" beginnen ("_voll (nicht ausgegeben)"), bleiben aussen vor.
+ * Ohne Feld "lieferung" in kurse.config.json oder ohne den Ordner: null.
+ */
+async function lieferIndex(kurs) {
+  if (!kurs.lieferung) return null
+  const wurzel = join(KURS_WURZEL, kurs.lieferung)
+  if (!existsSync(wurzel)) return null
+
+  const nachGroesse = new Map()
+  let anzahl = 0
+  async function sammeln(ordner) {
+    for (const eintrag of await readdir(ordner, { withFileTypes: true })) {
+      const voll = join(ordner, eintrag.name)
+      if (eintrag.isDirectory()) {
+        if (!eintrag.name.startsWith('_')) await sammeln(voll)
+        continue
+      }
+      if (!/\.(html|pdf)$/i.test(eintrag.name)) continue
+      const { size } = await stat(voll)
+      if (!nachGroesse.has(size)) nachGroesse.set(size, [])
+      nachGroesse.get(size).push(voll)
+      anzahl++
+    }
+  }
+  await sammeln(wurzel)
+
+  const pruefsummen = new Map()
+  return {
+    anzahl,
+    /** Liefername (ohne Endung) einer gelesenen Datei, oder null, wenn sie nicht ausgegeben ist. */
+    async finde({ inhalt, hash }) {
+      for (const kandidat of nachGroesse.get(inhalt.length) ?? []) {
+        if (!pruefsummen.has(kandidat)) pruefsummen.set(kandidat, (await lesen(kandidat)).hash)
+        if (pruefsummen.get(kandidat) === hash) return basename(kandidat).replace(/\.(html|pdf)$/i, '')
+      }
+      return null
+    },
+  }
 }
 
 function mb(bytes) {

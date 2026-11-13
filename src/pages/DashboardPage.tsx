@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { deckOeffnen } from '../lib/deckOeffnen'
 import Kopfzeile from '../components/Kopfzeile'
 import KeinKurs from '../components/KeinKurs'
-import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse'
+import {
+  dateiHerunterladen,
+  downloadName,
+  kurseLaden,
+  kurstageLaden,
+  type Kurs,
+  type Kurstag,
+} from '../lib/kurse'
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 import { useIch } from '../lib/TrainerContext'
@@ -210,20 +217,74 @@ function Kachel({ tag, vermittelt }: { tag: TagImSegment; vermittelt: boolean })
   )
 
   const farbe = FARBEN[tag.art] ?? FARBEN.kurstag
-  const klassen = `block w-full text-left rounded-xl p-4 shadow-sm border ${
-    vermittelt ? farbe.erledigt : farbe.offen
+  const rahmen = `flex flex-col rounded-xl shadow-sm border ${vermittelt ? farbe.erledigt : farbe.offen} ${
+    tag.deck_pfad ? 'hover:border-ifm-red transition-colors' : ''
   }`
 
-  if (!tag.deck_pfad) {
-    return <div className={klassen}>{inhalt}</div>
-  }
+  const downloads = (
+    [
+      ['trainer', 'Trainer', 'Trainerfassung (HTML, mit Cockpit und Notizen)', tag.deck_pfad],
+      ['teilnehmer', 'Teilnehmer', 'Teilnehmerfassung (HTML, ohne Notizen)', tag.teilnehmer_pfad],
+      ['pdf', 'PDF', 'PDF der Teilnehmerfassung', tag.pdf_pfad],
+    ] as const
+  ).filter(([, , , pfad]) => pfad)
 
   return (
+    <div className={rahmen}>
+      {tag.deck_pfad ? (
+        <button
+          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag))}
+          className="block w-full flex-1 text-left p-4 cursor-pointer"
+        >
+          {inhalt}
+        </button>
+      ) : (
+        <div className="flex-1 p-4">{inhalt}</div>
+      )}
+
+      {downloads.length > 0 && (
+        <div className="flex items-center gap-3 border-t border-ifm-blue/10 px-4 py-2 text-xs">
+          <span className="text-ifm-gray">Herunterladen:</span>
+          {downloads.map(([art, name, erklaerung, pfad]) => (
+            <DownloadKnopf
+              key={art}
+              name={name}
+              erklaerung={erklaerung}
+              pfad={pfad!}
+              dateiname={downloadName(tag, art)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DownloadKnopf({
+  name,
+  erklaerung,
+  pfad,
+  dateiname,
+}: {
+  name: string
+  erklaerung: string
+  pfad: string
+  dateiname: string
+}) {
+  const [laedt, setLaedt] = useState(false)
+  return (
     <button
-      onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag))}
-      className={`${klassen} hover:border-ifm-red transition-colors cursor-pointer`}
+      title={`${erklaerung}: ${dateiname}`}
+      disabled={laedt}
+      onClick={() => {
+        setLaedt(true)
+        dateiHerunterladen(pfad, dateiname)
+          .catch((e: Error) => window.alert(`Herunterladen fehlgeschlagen: ${e.message}`))
+          .finally(() => setLaedt(false))
+      }}
+      className="font-medium text-ifm-blue underline-offset-2 hover:underline disabled:opacity-50"
     >
-      {inhalt}
+      {laedt ? `${name} …` : name}
     </button>
   )
 }

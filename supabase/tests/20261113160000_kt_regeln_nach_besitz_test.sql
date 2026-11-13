@@ -37,6 +37,12 @@ insert into public.kt_kurs_freigaben (kurs_id, trainer_id, stufe) values
 insert into storage.objects (bucket_id, name, owner, metadata)
 values ('decks', 'weg/quellen/kt-test.zip', null, '{"size": 1}');
 
+-- Downloads (Baustein 2): Teilnehmerfassung und PDF, bei weg und bei hg
+insert into storage.objects (bucket_id, name, owner, metadata) values
+  ('decks', 'weg/teilnehmer/kt-test.html', null, '{"size": 1}'),
+  ('decks', 'weg/pdf/kt-test.pdf',         null, '{"size": 1}'),
+  ('decks', 'hg/pdf/kt-test.pdf',          null, '{"size": 1}');
+
 select set_config('kt.niko',  (select t.id::text from public.kt_trainer t where t.rolle = 'admin'), true);
 select set_config('kt.co',    '00000000-0000-4000-8000-0000000000c1', true);
 select set_config('kt.weg',   (select k.id::text from public.kurse k where k.slug = 'weg'), true);
@@ -207,6 +213,9 @@ begin
   if n = 0 then raise exception 'C34: Co sieht die Decks von weg nicht'; end if;
   select count(*) into n from storage.objects where bucket_id = 'decks' and name like 'weg/quellen/%';
   if n <> 0 then raise exception 'C35: Co sieht Quellen ohne Stufe fassung'; end if;
+  select count(*) into n from storage.objects
+  where bucket_id = 'decks' and name in ('weg/teilnehmer/kt-test.html', 'weg/pdf/kt-test.pdf');
+  if n <> 2 then raise exception 'C35b: Co sieht Teilnehmerfassung/PDF von weg nicht (% von 2)', n; end if;
   select count(*) into n from storage.objects where bucket_id = 'decks' and name not like 'weg/%';
   if n <> 0 then raise exception 'C36: Co sieht % Dateien ausserhalb von weg', n; end if;
   begin

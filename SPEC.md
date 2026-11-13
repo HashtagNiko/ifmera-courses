@@ -105,9 +105,13 @@ kann nichts ändern. Ohne Freigabe sieht es gar keinen Kurs.
 
 - Der Sync lädt zusätzlich je Tag die Teilnehmerfassung (HTML) und das PDF hoch, in
   `<kürzel>/teilnehmer/` und `<kürzel>/pdf/`. Nur Geändertes, erkannt an der Prüfsumme, wie bei den Trainer-Decks.
-- `kurstage` bekommt dafür Pfade und Prüfsummen.
-- Je Kurstag drei Knöpfe: Trainer-HTML, Teilnehmer-HTML, PDF.
-- **Annahme:** Dateiname wie in „2. Slides“ (Liefername), sonst `Tag<n>`.
+- **Nur Ausgegebenes:** Teilnehmerfassung und PDF gelten als ausgegeben, wenn dieselbe Datei im
+  Lieferordner „2. Slides“ liegt (`lieferung` in `kurse.config.json`); Ordner mit „_“ vorn zählen nicht.
+  Nicht Ausgegebenes bekommt keinen Knopf. H&G kompakt hat noch keinen Lieferordner (OFFENE-FRAGEN Nr. 16).
+- `kurstage` bekommt dafür Liefername, Pfade und Prüfsummen.
+- Je Kurstag bis zu drei Knöpfe: Trainer, Teilnehmer, PDF.
+- **Annahme:** Dateiname wie in „2. Slides“ (Liefername), sonst `Tag <n>`; die Trainerfassung bekommt
+  den Zusatz „(Trainerfassung)“, weil sie dort denselben Namen trägt wie die Teilnehmerfassung.
 - Die Trainer-HTML enthält ab Baustein 3 die eigenen Notizen dessen, der sie herunterlädt.
 - **Annahme:** Öffnet oder lädt ein Trainer ein fremdes Deck, ersetzt die App in der Fußzeile
   „Herr Krnic“ durch seinen Anzeigenamen, nur in seiner Kopie (OFFENE-FRAGEN Nr. 3).

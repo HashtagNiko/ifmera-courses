@@ -3,13 +3,15 @@
     "slug": "weg",
     "name": "WEG-Kurs",
     "ordner": "10_WEG-Kurs",
-    "tagebuch": "00_WEG_Projekt/Themenübersicht Trainertagebuch - WEG-Kurs.docx"
+    "tagebuch": "00_WEG_Projekt/Themenübersicht Trainertagebuch - WEG-Kurs.docx",
+    "lieferung": "../WEG-Kurs/2. Slides"
   },
   {
     "slug": "hg",
     "name": "H&G-Kurs",
     "ordner": "50_H&G-Kurs",
-    "tagebuch": "40_H&G_Projekt/Themenübersicht Trainertagebuch - H&G-Kurs.docx"
+    "tagebuch": "40_H&G_Projekt/Themenübersicht Trainertagebuch - H&G-Kurs.docx",
+    "lieferung": "../H&G-Kurs/2. Slides"
   },
   {
     "slug": "hg-kompakt",
@@ -21,6 +23,7 @@
     "slug": "weg-kompakt",
     "name": "WEG kompakt",
     "ordner": "10_WEG-Kurs/kompakt",
-    "tagebuch": "00_WEG_Projekt/Themenübersicht Trainertagebuch - WEG kompakt.docx"
+    "tagebuch": "00_WEG_Projekt/Themenübersicht Trainertagebuch - WEG kompakt.docx",
+    "lieferung": "../WEG-Kurs/2. Slides/Kompaktversion"
   }
 ]

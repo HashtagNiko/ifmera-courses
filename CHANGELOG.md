@@ -2,6 +2,25 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 2 · Herunterladen
+
+- Migration `20261113180000_kt_downloads.sql` (hinzufügend, eingespielt nach Sicherung): `kurstage`
+  bekommt `liefername`, `teilnehmer_pfad/_hash/_groesse`, `pdf_pfad/_hash/_groesse`. Regeln unverändert;
+  Test C prüft zusätzlich, dass ein Trainer mit Freigabe Teilnehmerfassung und PDF seines Kurses sieht
+  (C35b) und keine fremden (C36). Probeläufe mit Test und Rückbau grün, danach alle Tests live grün.
+- Deck-Sync lädt Teilnehmerfassung und PDF hoch, aber nur, was im Lieferordner „2. Slides“ liegt
+  (gleiche Prüfsumme; Ordner mit „_“ vorn zählen nicht), und übernimmt von dort den Liefernamen.
+  Neues Feld `lieferung` in `kurse.config.json` (weg, hg, weg-kompakt; hg-kompakt hat keinen).
+- Kacheln: unten „Herunterladen: Trainer · Teilnehmer · PDF“, je nur, wenn es die Datei gibt.
+- „Abmelden“ meldet nur noch dieses Browserfenster ab (`scope: 'local'`); bisher wurde dabei auch die
+  Sitzung des Deck-Syncs beendet.
+- Sync: kein `process.exit()` mehr nach Netzwerkanfragen (Absturz unter Windows), klare Meldung, wenn
+  die gespeicherte Sitzung fehlt.
+- Dateien: `supabase/migrations/20261113180000_kt_downloads.sql`, `supabase/rueckbau/…`,
+  `supabase/tests/20261113160000_kt_regeln_nach_besitz_test.sql`, `scripts/sync-decks.mjs`,
+  `kurse.config.json`, `src/lib/kurse.ts`, `src/lib/AuthContext.tsx`, `src/pages/DashboardPage.tsx`,
+  `README.md`, `SPEC.md`, `OFFENE-FRAGEN.md`
+
 ## 2026-11-13 · Baustein 1 · Test-Konto
 
 - Test-Konto (Nikos Gmail-Adresse mit Zusatz) auf Nikos „ja“: Eintrag in `eingeladene_trainer`

@@ -60,7 +60,9 @@ Welche Kurse es gibt, steht in `kurse.config.json`:
 ```
 
 `ordner` ist der Name unterhalb von `KURS_WURZEL`; absolute Pfade stehen
-bewusst nicht im Repo. Ein neuer Kurs ist damit eine Zeile Konfiguration.
+bewusst nicht im Repo. `lieferung` (optional) ist der Lieferordner „2. Slides“,
+ebenfalls relativ zu `KURS_WURZEL`, z. B. `"../WEG-Kurs/2. Slides"`; siehe
+„Herunterladen“. Ein neuer Kurs ist damit eine Zeile Konfiguration.
 Angelegt wird ein Kurs in der Datenbank erst, wenn im zugehörigen Ordner auch
 gebaute Decks liegen; so erscheint im Dashboard kein leerer Reiter.
 
@@ -86,6 +88,16 @@ RLS-Policies für Konten in `kurs_zugriff`.
 Das Skript vergleicht jede Trainer-Fassung per sha256 mit dem Stand im Bucket
 und lädt nur Geändertes hoch. Danach ist die neue Fassung sofort im Tool
 sichtbar.
+
+## Herunterladen
+
+Jede Kachel hat unten Knöpfe für die Trainerfassung (HTML), die
+Teilnehmerfassung (HTML) und das PDF. Teilnehmerfassung und PDF lädt der Sync
+nur hoch, wenn genau diese Datei (gleiche Prüfsumme) im Lieferordner
+„2. Slides“ liegt; Ordner, die mit „_“ beginnen („_voll (nicht ausgegeben)“),
+zählen nicht. Heruntergeladen wird unter dem Liefernamen; die Trainerfassung
+bekommt den Zusatz „(Trainerfassung)“. Das Herunterladen ist für Trainer
+gedacht (für sich und Kollegen), nicht als Verteilweg an Teilnehmer.
 
 Die Teilnehmerunterlagen laufen bewusst nicht über dieses Tool, sondern weiter
 über Google Drive. Grund ist das Datenvolumen: der Free-Plan von Supabase deckt

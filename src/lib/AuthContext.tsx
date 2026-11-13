@@ -40,8 +40,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null }
   }
 
+  /**
+   * Meldet nur dieses Browserfenster ab. Ohne Angabe meldet supabase-js ueberall ab
+   * (scope "global"), auch die gespeicherte Sitzung des Deck-Syncs; danach fragte der
+   * Sync wieder nach dem Passwort (aufgefallen am 13.11.2026).
+   */
   async function signOut() {
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
   }
 
   const value: AuthContextValue = {

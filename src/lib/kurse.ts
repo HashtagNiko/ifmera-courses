@@ -14,7 +14,14 @@ export interface Kurstag {
   tagebuch_titel: string | null
   deck_pfad: string | null
   deck_aktualisiert_am: string | null
+  /** Name wie in "2. Slides", ohne Endung; leer, wenn der Tag dort nicht liegt */
+  liefername: string | null
+  /** Teilnehmerfassung und PDF; nur gesetzt, wenn sie ausgegeben werden (im Lieferordner liegen) */
+  teilnehmer_pfad: string | null
+  pdf_pfad: string | null
 }
+
+export type DownloadArt = 'trainer' | 'teilnehmer' | 'pdf'
 
 export interface Kurs {
   id: string
@@ -36,7 +43,7 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
     .from('kurstage')
     // Eine einzelne Zeichenkette, nicht zusammengesetzt: supabase-js leitet die
     // Typen aus dem Literal ab und verliert sie bei einer Verkettung.
-    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am')
+    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am, liefername, teilnehmer_pfad, pdf_pfad')
     .eq('kurs_id', kursId)
     .order('position', { nullsFirst: false })
     .order('nummer')
@@ -64,17 +71,54 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
  * `storage.download()`, das beides nicht kennt.
  */
 export async function deckLaden(deckPfad: string): Promise<string> {
+  const antwort = await ausDemBucket(deckPfad)
+  const html = new Blob([ergaenzeVollbild(await antwort.text())], { type: 'text/html;charset=utf-8' })
+  return URL.createObjectURL(html)
+}
+
+/** Holt eine Datei aus dem privaten Bucket, am Cache vorbei (siehe deckLaden). */
+async function ausDemBucket(pfad: string): Promise<Response> {
   const { data: sitzung } = await supabase.auth.getSession()
   const token = sitzung.session?.access_token
   if (!token || !supabaseUrl || !supabaseAnonKey) throw new Error('Nicht angemeldet.')
-  const pfad = deckPfad.split('/').map(encodeURIComponent).join('/')
-  const antwort = await fetch(`${supabaseUrl}/storage/v1/object/decks/${pfad}?v=${Date.now()}`, {
+  const kodiert = pfad.split('/').map(encodeURIComponent).join('/')
+  const antwort = await fetch(`${supabaseUrl}/storage/v1/object/decks/${kodiert}?v=${Date.now()}`, {
     headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnonKey },
     cache: 'no-store',
   })
-  if (!antwort.ok) throw new Error(`Deck konnte nicht geladen werden (${antwort.status}).`)
-  const html = new Blob([ergaenzeVollbild(await antwort.text())], { type: 'text/html;charset=utf-8' })
-  return URL.createObjectURL(html)
+  if (!antwort.ok) throw new Error(`Datei konnte nicht geladen werden (${antwort.status}).`)
+  return antwort
+}
+
+/**
+ * Dateiname beim Herunterladen: der Liefername aus "2. Slides", wie Niko ihn auch
+ * selbst ausgibt. Trainer- und Teilnehmerfassung tragen dort denselben Namen und
+ * unterscheiden sich nur durch den Ordner; beim Herunterladen landen beide im selben
+ * Ordner, deshalb bekommt die Trainerfassung einen Zusatz.
+ */
+export function downloadName(tag: Kurstag, art: DownloadArt): string {
+  const basis = tag.liefername ?? `Tag ${tag.nummer}`
+  if (art === 'trainer') return `${basis} (Trainerfassung).html`
+  if (art === 'teilnehmer') return `${basis}.html`
+  return `${basis}.pdf`
+}
+
+/**
+ * Lädt eine Datei aus dem Bucket herunter. Die Datei kommt unverändert, so wie sie
+ * im Kursordner liegt (ohne den Vollbild-Knopf, den nur das Öffnen im Tool ergänzt).
+ */
+export async function dateiHerunterladen(pfad: string, dateiname: string): Promise<void> {
+  const antwort = await ausDemBucket(pfad)
+  // Supabase liefert HTML als text/plain aus; der Typ richtet sich deshalb nach der Endung.
+  const typ = dateiname.endsWith('.pdf') ? 'application/pdf' : 'text/html;charset=utf-8'
+  const url = URL.createObjectURL(new Blob([await antwort.arrayBuffer()], { type: typ }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = dateiname
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 /**
