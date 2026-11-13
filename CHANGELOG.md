@@ -4,7 +4,7 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
 
 ## 2026-11-13 · Baustein 1 · Besitz und Rechte (Schritte A und B)
 
-- **Schritt A (hinzufügend, eingespielt):** `20261113150000_kt_besitz_und_freigaben.sql` legt
+- **Schritt A (hinzufügend, eingespielt 13.11.2026, Test live grün):** `20261113150000_kt_besitz_und_freigaben.sql` legt
   `kt_migrationen`, `kt_trainer` (Niko als Admin, übernommen aus `kurs_zugriff`), `kurse.besitzer_id`,
   `durchlaeufe.besitzer_id` und `kt_kurs_freigaben` an, dazu sechs Hilfsfunktionen. Bestehende Regeln
   unverändert, niemand bekommt neue Rechte. Rückbau in `supabase/rueckbau/`.
@@ -19,7 +19,14 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   keine Testadressen in `eingeladene_trainer`). Gegenproben: 5 für A, 9 für C, jede eingebaute
   Schwachstelle lässt den Test scheitern. Direktes Löschen in `storage.objects` sperrt Supabase per
   `storage.protect_delete`; der Test öffnet das nur für seine Transaktion.
-- Sicherung vor Schritt A: `backup/2026-11-13_vor_baustein1_schritt_a.json` (lokal).
+- Nebenwirkungen von Schritt A (gewollt): Nikos Konto lässt sich nicht löschen, solange ihm Kurse oder
+  Durchläufe gehören; ein Insert in `kurse`/`durchlaeufe` ohne Anmeldung (SQL-Editor) braucht eine
+  ausdrückliche `besitzer_id`; jede Migration bricht nach 3 s Sperr-Wartezeit ab (`lock_timeout`), statt
+  Anmeldungen im Prüfungstool aufzuhalten.
+- Zweiter Blick (Sub-Agent) vor dem Einspielen: keine Blocker; umgesetzt wurden `lock_timeout`,
+  `kt_kurs_id` nur für aktive Trainer (anonyme Prüfungsteilnehmer sind ebenfalls `authenticated`),
+  schärfere Tests (T11–T15, T32b/c, T36–T38, T55) und strengere Selbstprüfungen.
+- Sicherung vor Schritt A: `backup/2026-11-13_vor_baustein1_schritt_a_2.json` (lokal).
 - Neu: `supabase/sicherung.sql` (Sicherungsabfrage).
 - Dateien: `supabase/migrations/20261113150000_*`, `supabase/migrations/20261113160000_*`,
   `supabase/rueckbau/*`, `supabase/tests/*`, `supabase/sicherung.sql`, `src/lib/trainer.ts`,

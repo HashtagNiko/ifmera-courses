@@ -16,7 +16,10 @@ select json_build_object(
     'kurstage',          (select coalesce(json_agg(t), '[]') from public.kurstage t),
     'durchlaeufe',       (select coalesce(json_agg(t), '[]') from public.durchlaeufe t),
     'fortschritt',       (select coalesce(json_agg(t), '[]') from public.fortschritt t),
-    'kurs_zugriff',      (select coalesce(json_agg(t), '[]') from public.kurs_zugriff t)
+    'kurs_zugriff',      (select coalesce(json_agg(t), '[]') from public.kurs_zugriff t),
+    'kt_migrationen',    (select coalesce(json_agg(t), '[]') from public.kt_migrationen t),
+    'kt_trainer',        (select coalesce(json_agg(t), '[]') from public.kt_trainer t),
+    'kt_kurs_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_kurs_freigaben t)
   ),
   'policies', (
     select json_agg(p order by p.schemaname, p.tablename, p.policyname)
