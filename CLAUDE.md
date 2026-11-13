@@ -36,7 +36,7 @@ Es gibt **keinen Prüfer**. Claude prüft sich selbst nach §4.
 **🟢 Grün – Claude macht es allein und berichtet danach**
 - Code, Doku und Tests in diesem Repo; Branches anlegen, nach bestandener Selbstprüfung nach `main`
   mergen und pushen (damit geht die App live)
-- Datenbank lesen
+- Datenbank lesen (`node scripts/sql.mjs --lesend`)
 - **hinzufügende** Datenbankschritte nur für das Kurs-Tool: neue `kt_`-Tabellen, neue Spalten, neue
   Funktionen, Rechte auf neue Tabellen – immer nach Sicherung (§4)
 - `npm run sync:decks` und `npm run import:tagebuch` ausführen
@@ -85,17 +85,23 @@ Claude meldet nie selbst „fertig“. Ein Baustein ist abgeschlossen, wenn Niko
 
 ## 4. Sicherheitsnetz (statt Prüfer)
 
-1. **Geteilte Datenbank, kein Testprojekt.** Das Kurs-Tool liegt im Supabase-Projekt „shnoozy-App“
-   zusammen mit dem Prüfungstool, das dort echte Daten hat. Claude fasst nur Objekte des Kurs-Tools an (§6).
+1. **Nur Live-Datenbank, geteilt mit dem Prüfungstool.** Das Kurs-Tool liegt im Supabase-Projekt
+   „ifm-pruefungstool“ zusammen mit dem Prüfungstool, das dort echte Daten hat. **Es gibt kein
+   Testprojekt, und das bleibt so** (Nikos Entscheidung, 13.11.2026); Claude schlägt keins vor.
+   Claude fasst nur Objekte des Kurs-Tools an (§6).
 2. **Jede Datenbankänderung ist eine Migrationsdatei** in `supabase/migrations/` (Zeitstempel vorn):
    eine Transaktion mit Selbstprüfung am Ende (`DO`-Block, der bei Abweichung `RAISE EXCEPTION` wirft).
-   Schlägt etwas fehl, ändert sich nichts. Nie Änderungen nur im Dashboard.
+   Schlägt etwas fehl, ändert sich nichts. Nie Änderungen nur im Dashboard. Eingespielt wird mit
+   `node scripts/sql.mjs <datei>`. Jede Migration trägt sich am Ende in `kt_migrationen` ein; die
+   Migrationstabelle von Supabase (`supabase_migrations`) gehört dem Prüfungstool und bleibt unberührt.
 3. **Zu jeder Migration eine Rückbau-Datei** in `supabase/rueckbau/` mit gleichem Namen.
 4. **Sicherung vorher.** Vor jeder Migration speichert Claude Inhalt und Regeln der Kurs-Tool-Tabellen
    als Datei in `backup/` (nur lokal, steht in `.gitignore`).
 5. **Rechte-Tests** in `supabase/tests/` laufen in einer Transaktion, die am Ende zurückgerollt wird.
-   Test-Konten entstehen nur darin, es bleibt nichts zurück. Zu jedem Test gehört eine **Gegenprobe**:
-   eine absichtlich falsche Regel muss den Test scheitern lassen.
+   Test-Konten entstehen nur darin, es bleibt nichts zurück. Weil der Trigger des Prüfungstools jedes
+   neue Konto nur zulässt, wenn die Adresse in `eingeladene_trainer` steht, trägt der Test seine
+   erfundenen Adressen (Endung `.invalid`) dort kurz mit ein; das Zurückrollen nimmt auch das zurück.
+   Zu jedem Test gehört eine **Gegenprobe**: eine absichtlich falsche Erwartung muss den Test scheitern lassen.
 6. **Zweiter Blick.** Vor jeder Migration und jedem gelben Schritt liest ein Sub-Agent die Datei mit
    frischem Blick gegen. Er bekommt die Datei und diese Regeln, nicht Claudes Einschätzung.
 7. **Reihenfolge bei Rechten:** erst hinzufügen (neue Tabellen und Funktionen) → dann App-Code live →
@@ -128,7 +134,7 @@ Das Repo ist öffentlich, und GitHub Pages liefert jede Datei ohne Login aus.
 |---|---|
 | App | React + TypeScript + Vite + Tailwind, Code in `src/` |
 | Hosting | GitHub Pages, Domain `courses.shnoozy.top`. **Push auf `main` = live** (`.github/workflows/deploy.yml`) |
-| Datenbank, Login, Dateien | Supabase-Projekt „shnoozy-App“ (`gjeunxdhawzptjbheoxx`), privater Bucket `decks` |
+| Datenbank, Login, Dateien | Supabase-Projekt **„ifm-pruefungstool“** (`gjeunxdhawzptjbheoxx`, Frankfurt), privater Bucket `decks`. Die README nannte es früher „shnoozy-App“ – das ist ein anderes Projekt. |
 | Decks | werden in den Kursordnern gebaut; `npm run sync:decks` lädt sie hoch |
 | Sprache | Oberfläche, Doku und Code-Bezeichner Deutsch wie bisher. Neue Tabellen und Funktionen beginnen mit `kt_` |
 
@@ -141,8 +147,10 @@ Funktion `hat_kurszugriff` und alle `kt_*`-Funktionen · Bucket `decks` und sein
 per Trigger des Prüfungstools automatisch eine Zeile in `trainer`, und anlegen lässt es sich nur, wenn
 die Adresse vorher in `eingeladene_trainer` steht.
 
-**Datenbankzugang von Claude:** Supabase Management API mit dem persönlichen Schlüssel aus der
-Windows-Benutzervariable `SUPABASE_TOKEN_KURSTOOL` (gilt nur für „shnoozy-App“).
+**Datenbankzugang von Claude:** `node scripts/sql.mjs` (Supabase Management API) mit dem persönlichen
+Schlüssel aus der Windows-Benutzervariable `SUPABASE_TOKEN_KURSTOOL`. Lesen immer mit `--lesend`.
+- Der Schlüssel sieht auch das Projekt „Shnoozy-App“ (andere App). `scripts/sql.mjs` erreicht trotzdem
+  nur das Projekt aus `VITE_SUPABASE_URL` in der `.env`. Kein anderer Weg zur Datenbank.
 - Den Wert nie ausgeben, nie in Dateien oder Befehlszeilen schreiben, die angezeigt werden.
 - **Nie** `SUPABASE_ACCESS_TOKEN` oder `SUPABASE_ACCESS_TOKEN_PROD` verwenden – die gehören zu einem
   anderen Projekt.

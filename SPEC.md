@@ -41,7 +41,7 @@ Weitere Trainer können später dazukommen. Nichts wird auf genau zwei Personen 
 | Stufe `nutzen` | Decks öffnen und herunterladen, Tagebuch lesen |
 | Stufe `notizen` | wie `nutzen`, dazu eigene Folien-Notizen |
 | Stufe `fassung` | wie `notizen`, dazu Quellpakete laden und eigene Fassungen hochladen |
-| Fassung | eigenes Deck eines Trainers zu einem Kurstag eines fremden Kurses. Vermerkt, auf welchem Stand des Originals sie beruht |
+| Fassung | eigene, bearbeitete Kopie eines Trainers zu einem Kurstag: Deck plus Quellpaket. Grundlage ist ein Original-Deck oder die Fassung eines anderen Trainers; vermerkt wird, auf welchem Stand der Grundlage sie beruht |
 | Gemeinsamer Durchlauf | Durchlauf mit mehreren Trainern und Tagesplan: wer hält welchen Tag, mit welcher Fassung |
 
 ---
@@ -76,6 +76,12 @@ Weitere Trainer können später dazukommen. Nichts wird auf genau zwei Personen 
 
 - Kurs-Kürzel bleiben im ganzen Projekt eindeutig. Der Besitzer eines Bucket-Ordners ergibt sich aus
   dem Kurs mit diesem Kürzel; der Bucket muss deshalb nicht umgeräumt werden.
+- Löschen regeln die neuen Regeln gleich mit: Die Migration `20260912100000_loeschrechte.sql` wurde nie
+  in die Datenbank eingespielt (Bestandsaufnahme 13.11.2026) und geht in den neuen Regeln auf.
+- `anon` verliert alle Rechte auf die Tabellen des Kurs-Tools; `authenticated` behält nur, was die App
+  braucht (kein `truncate`, `references`, `trigger`).
+- Die zwei alten Testdateien im Bucket (`test/…`) werden entfernt (gelb).
+- `kt_migrationen` hält fest, welche Migrationen des Kurs-Tools eingespielt sind.
 - Reihenfolge: hinzufügen (grün) → App live → alte Regeln ersetzen (gelb) → Rechte-Tests auf der
   echten Datenbank in einer zurückgerollten Transaktion.
 
@@ -131,23 +137,39 @@ Teilnehmerfassung hat kein Cockpit und keine Notizen.
 öffnen, Cockpit öffnen: die eigenen Notizen erscheinen, fett ist fett. Als Niko dasselbe Deck öffnen:
 Nikos Notizen stehen unverändert da.
 
-### Baustein 4 – Eigene Fassungen mit Claude
+### Baustein 4 – Eigene Fassungen mit Claude, in beide Richtungen
+
+Kopien gehen in beide Richtungen (Nikos Entscheidung, 13.11.2026): Der Co-Trainer bearbeitet eine
+Kopie von Nikos Inhalten, und Niko bearbeitet eine Kopie der Inhalte des Co-Trainers. Jeder ändert
+dabei nur seine eigene Kopie.
 
 - Der Sync baut je Kurstag ein **Quellpaket** (Zip): Folienquellen des Tages, die Bilder dazu, Engine,
-  Build-Skript, Bauplan nur für diesen Tag und eine Anleitung `CLAUDE.md` für den Co-Trainer. Die
-  Vorlage dieser Anleitung liegt bei den Kursquellen, nicht in diesem öffentlichen Repo. Ablage in
+  Build-Skript, Bauplan nur für diesen Tag und eine Anleitung `CLAUDE.md` für den, der damit arbeitet.
+  Die Vorlage dieser Anleitung liegt bei den Kursquellen, nicht in diesem öffentlichen Repo. Ablage in
   `<kürzel>/quellen/`, lesbar ab Stufe `fassung`.
-- `kt_deck_fassungen`: Trainer, Kurstag, Pfad, Prüfsumme, Stand des Originals (`basis_hash`),
-  hochgeladen am, Bemerkung. Ablage im Bucket unter `fassungen/<trainer-id>/…`; schreiben darf nur
-  der Trainer selbst.
-- App, je Kurstag „Eigene Fassung“: Quellpaket laden; fertiges Deck hochladen (nur HTML mit Folien,
-  Größengrenze); Fassung öffnen, herunterladen, löschen. Hinweis, wenn das Original neuer ist als die
-  Grundlage der Fassung, mit Link zum neuen Quellpaket.
-- Der Co-Trainer arbeitet lokal mit Claude Code (eigenes Claude-Abo). Für den Build braucht er Python.
-- **Annahme:** Eine Fassung sieht nur ihr Besitzer; andere nur über einen gemeinsamen Durchlauf (Baustein 5).
+- Eine **Fassung** besteht aus dem gebauten Deck **und** ihrem Quellpaket. Nur so kann ein anderer
+  Trainer sie wiederum kopieren und weiterbearbeiten.
+- `kt_deck_fassungen`: Besitzer, Kurstag, Grundlage (Original oder andere Fassung), Stand der Grundlage
+  (`basis_hash`), Pfade und Prüfsummen von Deck und Quellpaket, hochgeladen am, Bemerkung. Ablage im
+  Bucket unter `fassungen/<besitzer-id>/…`; schreiben darf nur der Besitzer.
+- `kt_fassung_freigaben`: Fassung, Trainer, Stufe (`nutzen` = ansehen und herunterladen, `fassung` =
+  zusätzlich das Quellpaket laden und eine eigene Kopie anlegen). Freigeben darf nur der Besitzer der Fassung.
+- App, je Kurstag „Eigene Fassung“: Quellpaket der Grundlage laden; fertiges Deck und Quellpaket
+  hochladen (Deck nur HTML mit Folien, Größengrenze); Fassung öffnen, herunterladen, freigeben,
+  löschen. Hinweis, wenn die Grundlage neuer ist als der Stand, auf dem die Fassung beruht, mit Link
+  zum neuen Quellpaket.
+- Niko kann eine Fassung des Co-Trainers auch in seine eigenen Kursquellen übernehmen: Quellpaket
+  laden, mit Claude in den Kursordner einarbeiten, wie gewohnt bauen und syncen. Sein Original ändert
+  sich dann, weil er es selbst ändert, nicht der Co-Trainer.
+- Jeder arbeitet lokal mit Claude Code (eigenes Claude-Abo). Für den Build braucht man Python.
+- **Annahme:** Ohne Freigabe sieht eine Fassung nur ihr Besitzer; dazu kommt der gemeinsame Durchlauf
+  (Baustein 5).
+- Eigene ganze Kurse des Co-Trainers lässt das Datenmodell schon zu (Besitz und Freigabe gelten für
+  jeden Trainer gleich). Wie er sie hochlädt, wird geklärt, wenn er welche hat.
 
-**Laien-Test:** Als Test-Trainer ein Quellpaket laden, eine Folienüberschrift ändern, bauen, hochladen,
-öffnen. Danach als Niko: das Original ist unverändert.
+**Laien-Test:** Als Test-Trainer ein Quellpaket von Nikos Tag laden, eine Folienüberschrift ändern,
+bauen, hochladen, für Niko freigeben. Als Niko: das Original ist unverändert, die Fassung des
+Test-Trainers ist sichtbar, und Niko kann ihr Quellpaket laden und eine eigene Kopie anlegen.
 
 ### Baustein 5 – Gemeinsamer Durchlauf
 

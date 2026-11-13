@@ -4,7 +4,7 @@ Trainer-Oberfläche für die ifmera-Kurse, erreichbar unter `courses.shnoozy.top
 (GitHub Pages). Zugang nur nach Anmeldung. Das Dashboard zeigt alle Kurstage;
 ein Klick öffnet das Deck im Vollbild, um sich durch die Slides zu klicken.
 
-Login und Daten laufen über das bestehende Supabase-Projekt "shnoozy-App",
+Login und Daten laufen über das bestehende Supabase-Projekt "ifm-pruefungstool",
 dasselbe, das auch `exams.shnoozy.top` (Prüfungstool, eigenes Repo) nutzt.
 
 ## Warum die Decks nicht in diesem Repo liegen

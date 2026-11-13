@@ -7,7 +7,7 @@ export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
 /**
- * Geteilter Supabase-Client für die ganze App (Projekt "shnoozy-App", dasselbe
+ * Geteilter Supabase-Client für die ganze App (Projekt "ifm-pruefungstool", dasselbe
  * wie beim Prüfungstool). Erst nutzbar, sobald VITE_SUPABASE_URL und
  * VITE_SUPABASE_ANON_KEY gesetzt sind; wir werfen erst beim tatsächlichen
  * Zugriff, damit das Gerüst auch ohne Keys startet.
