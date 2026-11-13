@@ -2,6 +2,17 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 1 · Test-Konto
+
+- Test-Konto (Nikos Gmail-Adresse mit Zusatz) auf Nikos „ja“: Eintrag in `eingeladene_trainer`
+  (Claude), Konto im Dashboard (Niko), Freischaltung in `kt_trainer` als „Test-Trainer“, Rolle
+  `trainer` (Claude, nach Sicherung). Das Prüfungstool hat dafür automatisch ein leeres Profil angelegt.
+  Rechte-Tests A und C danach erneut grün.
+- Kurstage und Tagebuch zeigen ohne eigenen oder freigegebenen Kurs jetzt „Dir ist noch kein Kurs
+  freigegeben“ statt des Hinweises auf den Deck-Sync bzw. den Tagebuch-Import.
+- Dateien: `src/components/KeinKurs.tsx`, `src/pages/DashboardPage.tsx`, `src/pages/TagebuchPage.tsx`,
+  `OFFENE-FRAGEN.md`
+
 ## 2026-11-13 · Baustein 1 · Besitz und Rechte (Schritte A, B, C)
 
 **Abgeschlossen:** Laien-Test von Niko bestanden („passt“, 13.11.2026).

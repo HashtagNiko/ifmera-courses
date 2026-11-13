@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { deckOeffnen } from '../lib/deckOeffnen'
 import Kopfzeile from '../components/Kopfzeile'
+import KeinKurs from '../components/KeinKurs'
 import { kurseLaden, kurstageLaden, type Kurs, type Kurstag } from '../lib/kurse'
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { useDurchlauf } from '../lib/DurchlaufContext'
@@ -112,7 +113,9 @@ export default function DashboardPage() {
 
         {fehler && <p className="rounded-lg bg-ifm-red/15 text-ifm-blue text-sm p-3">{fehler}</p>}
 
-        {!fehler && !laedt && tage.length === 0 && (
+        {!fehler && !laedt && kurse.length === 0 && <KeinKurs />}
+
+        {!fehler && !laedt && kurse.length > 0 && tage.length === 0 && (
           <p className="rounded-lg bg-ifm-lightblue text-ifm-blue text-sm p-4">
             Noch keine Kurstage angelegt. Nach dem ersten Deck-Sync erscheinen sie hier.
           </p>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import KeinKurs from '../components/KeinKurs'
 import { kurseLaden, type Kurs } from '../lib/kurse'
 import {
   durchlaeufeLaden,
@@ -22,11 +23,14 @@ export default function TagebuchPage() {
   const [fehler, setFehler] = useState<string | null>(null)
   const [neuOffen, setNeuOffen] = useState(false)
 
+  const [kurseGeladen, setKurseGeladen] = useState(false)
+
   useEffect(() => {
     kurseLaden()
       .then((k) => {
         setKurse(k)
         setKursId((v) => v ?? k[0]?.id ?? null)
+        setKurseGeladen(true)
       })
       .catch((e: Error) => setFehler(e.message))
   }, [])
@@ -61,6 +65,17 @@ export default function TagebuchPage() {
   }
 
   const erledigt = tage.filter((t) => t.vermittelt).length
+
+  if (kurseGeladen && kurse.length === 0) {
+    return (
+      <div className="min-h-full bg-ifm-cream">
+        <Kopfzeile titel="Trainertagebuch" />
+        <main className="max-w-4xl mx-auto px-6 py-8">
+          <KeinKurs />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-full bg-ifm-cream">
