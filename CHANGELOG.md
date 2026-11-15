@@ -16,6 +16,7 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   ab, als es keinen mehr gab (Verstoß gegen „Tests nutzen nur eigene Daten“). Umgestellt auf einen
   eigenen Test-Durchlauf mit einem Haken (neu C09b); danach 5/5, Gegenprobe (zu lockere Regel auf
   `fortschritt`) schlägt bei C31 an. Die Datenbank selbst war nicht betroffen.
+- Nikos Kontrolle (Tagebuch leer, keine Häkchen auf den Kacheln): passt.
 
 ## 2026-11-15 · Baustein 6 · Hilfe und Anleitung
 
@@ -35,6 +36,8 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
 - Test `src/components/Hilfe.test.ts` (25 Fälle): Seitenerkennung, Öffnen/Schließen, Hinweis gemerkt, und
   21 Beschriftungen, die Hilfe und Anleitung nennen, gibt es im Tool wirklich (Gegenprobe: umbenannter
   Knopf schlägt an). Insgesamt 74 Tests grün.
+- Nikos Laien-Test (Reiter „Anleitung“, Download, „?“ mit Escape, Einrichtungs-Datei in der Claude-App):
+  **passt**. Baustein 6 damit abgeschlossen.
 
 ## 2026-11-15 · Pflege · Uhr-Fehler der WEG-Engine behoben, Decks neu gebaut (OFFENE-FRAGEN Nr. 18, 20)
 
