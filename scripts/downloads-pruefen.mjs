@@ -55,7 +55,7 @@ async function pruefen() {
 
   const { data: tage, error: lesefehler } = await supabase
     .from('kurstage')
-    .select('nummer, deck_pfad, deck_hash, teilnehmer_pfad, teilnehmer_hash, pdf_pfad, pdf_hash, quellen_pfad, kurse(slug)')
+    .select('nummer, deck_pfad, deck_hash, teilnehmer_pfad, teilnehmer_hash, pdf_pfad, pdf_hash, quellen_pfad, trainer_kurz_pfad, trainer_kurz_hash, quellen_kurz_pfad, kurse(slug)')
     .eq('art', 'kurstag')
   if (lesefehler) {
     console.error(`kurstage nicht lesbar: ${lesefehler.message}`)
@@ -71,6 +71,9 @@ async function pruefen() {
       // Quellpaket: die Pruefsumme gilt dem Inhalt, nicht dem Zip; geprueft wird, ob es sich
       // oeffnen laesst und Bauplan, Engine und Build-Skript enthaelt
       ['Quellen', t.quellen_pfad, null],
+      // Stichpunkt-Fassungen (Baustein 7)
+      ['Trainer-kurz', t.trainer_kurz_pfad, t.trainer_kurz_hash],
+      ['Quellen-kurz', t.quellen_kurz_pfad, null],
     ]
       .filter(([, pfad]) => pfad)
       .map(([art, pfad, hash]) => ({ kurs: t.kurse?.slug, nummer: t.nummer, art, pfad, hash })),
@@ -89,17 +92,19 @@ async function pruefen() {
       continue
     }
     const inhalt = Buffer.from(await antwort.arrayBuffer())
-    if (d.art === 'Quellen') {
+    if (d.art === 'Quellen' || d.art === 'Quellen-kurz') {
       try {
         const zip = await JSZip.loadAsync(inhalt)
         const namen = Object.keys(zip.files)
         const fehlt = ['build.json', 'CLAUDE.md', 'engine/deck_engine.html', 'engine/build.py'].filter(
           (n) => !namen.some((x) => x.endsWith(`/${n}`)),
         )
-        if (fehlt.length) schlecht.push(`${d.kurs} Tag ${d.nummer} Quellen: es fehlt ${fehlt.join(', ')}`)
+        if (fehlt.length) schlecht.push(`${d.kurs} Tag ${d.nummer} ${d.art}: es fehlt ${fehlt.join(', ')}`)
+        else if (d.art === 'Quellen-kurz' && !(await zip.file(namen.find((x) => x.endsWith('/CLAUDE.md'))).async('string')).includes('nur Stichpunkte'))
+          schlecht.push(`${d.kurs} Tag ${d.nummer} Quellen-kurz: Hinweis auf Stichpunkte fehlt in CLAUDE.md`)
         else gut++
       } catch (e) {
-        schlecht.push(`${d.kurs} Tag ${d.nummer} Quellen: kein gueltiges Zip (${e.message})`)
+        schlecht.push(`${d.kurs} Tag ${d.nummer} ${d.art}: kein gueltiges Zip (${e.message})`)
       }
       continue
     }
@@ -110,7 +115,7 @@ async function pruefen() {
 
   const nachArt = (art) => dateien.filter((d) => d.art === art).length
   console.log(
-    `${dateien.length} Dateien geprueft (Trainer ${nachArt('Trainer')}, Teilnehmer ${nachArt('Teilnehmer')}, PDF ${nachArt('PDF')}, Quellen ${nachArt('Quellen')}): ` +
+    `${dateien.length} Dateien geprueft (Trainer ${nachArt('Trainer')}, Teilnehmer ${nachArt('Teilnehmer')}, PDF ${nachArt('PDF')}, Quellen ${nachArt('Quellen')}, Stichpunkt-Decks ${nachArt('Trainer-kurz')}, Stichpunkt-Quellen ${nachArt('Quellen-kurz')}): ` +
       `${gut} in Ordnung, ${schlecht.length} fehlerhaft.`,
   )
   for (const s of schlecht) console.log(`  ${s}`)

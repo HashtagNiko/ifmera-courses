@@ -8,14 +8,16 @@ import {
   downloadName,
   kurseLaden,
   kurstageLaden,
+  pfadeFuer,
   type Kurs,
   type Kurstag,
+  type NotizenModus,
 } from '../lib/kurse'
 import { durchlaeufeLaden, vermitteltIds } from '../lib/tagebuch'
 import { fassungenZaehlen } from '../lib/fassungen'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 import { useIch } from '../lib/TrainerContext'
-import { darfFassung, darfNotizen, meineStufenLaden, trainerLaden, type Stufe } from '../lib/trainer'
+import { darfFassung, darfNotizen, meineFreigabenLaden, notizenModus, trainerLaden, type MeineFreigabe } from '../lib/trainer'
 import type { DeckAnpassung } from '../lib/deckAnpassung'
 
 /** Kurstag mit dem Segment, unter dem er einsortiert wird. */
@@ -33,7 +35,7 @@ export default function DashboardPage() {
   const ich = useIch()
   const [namen, setNamen] = useState<Map<string, string>>(new Map())
 
-  const [stufen, setStufen] = useState<Map<string, Stufe>>(new Map())
+  const [freigaben, setFreigaben] = useState<Map<string, MeineFreigabe>>(new Map())
   const [fassungsZahl, setFassungsZahl] = useState<Map<string, number>>(new Map())
 
   // Wie viele Fassungen man zu jedem Tag sehen darf (eigene und freigegebene)
@@ -49,9 +51,9 @@ export default function DashboardPage() {
     trainerLaden()
       .then((t) => setNamen(new Map(t.map((x) => [x.id, x.anzeigename]))))
       .catch(() => setNamen(new Map()))
-    meineStufenLaden(ich.id)
-      .then(setStufen)
-      .catch(() => setStufen(new Map()))
+    meineFreigabenLaden(ich.id)
+      .then(setFreigaben)
+      .catch(() => setFreigaben(new Map()))
   }, [ich.id])
 
   useEffect(() => {
@@ -97,6 +99,9 @@ export default function DashboardPage() {
   // Fremdes Deck: in der Fußzeile der eigenen Kopie steht der eigene Name (SPEC.md, Baustein 2)
   const anpassung: DeckAnpassung =
     fremderKurs && kurs ? { fussName: { von: namen.get(kurs.besitzer_id) ?? '', nach: ich.anzeigename } } : {}
+  const meineFreigabe = kurs ? freigaben.get(kurs.id) : undefined
+  // Baustein 7: mit "nur Stichpunkte" gibt es die kurzen Fassungen von Deck und Quellpaket
+  const modus: NotizenModus = kurs ? notizenModus(kurs.besitzer_id, ich.id, meineFreigabe) : 'voll'
 
   return (
     <div className="min-h-full bg-ifm-cream">
@@ -128,6 +133,7 @@ export default function DashboardPage() {
             Freigegeben von{' '}
             <span className="text-ifm-blue">{namen.get(kurs.besitzer_id) ?? 'einem anderen Trainer'}</span>.
             Du kannst ihn nutzen, aber nicht verändern.
+            {modus === 'stichpunkte' && ' Im Cockpit siehst du statt der Notizen Stichpunkte.'}
           </p>
         )}
 
@@ -162,9 +168,10 @@ export default function DashboardPage() {
                     tag={t}
                     vermittelt={vermittelt.has(t.id)}
                     anpassung={anpassung}
-                    notizen={Boolean(kurs && darfNotizen(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
-                    fassung={Boolean(kurs && darfFassung(kurs.besitzer_id, ich.id, stufen.get(kurs.id)))}
+                    notizen={Boolean(kurs && darfNotizen(kurs.besitzer_id, ich.id, meineFreigabe?.stufe))}
+                    fassung={Boolean(kurs && darfFassung(kurs.besitzer_id, ich.id, meineFreigabe?.stufe))}
                     fassungen={fassungsZahl.get(t.id) ?? 0}
+                    modus={modus}
                   />
                 ))}
             </div>
@@ -229,6 +236,7 @@ function Kachel({
   notizen,
   fassung,
   fassungen,
+  modus,
 }: {
   tag: TagImSegment
   vermittelt: boolean
@@ -239,7 +247,12 @@ function Kachel({
   fassung: boolean
   /** Anzahl sichtbarer Fassungen (eigene und freigegebene) zu diesem Tag */
   fassungen: number
+  /** ausführliche Notizen oder nur Stichpunkte (Baustein 7) */
+  modus: NotizenModus
 }) {
+  // Welche Dateien man laden darf: bei "nur Stichpunkte" die kurzen Fassungen
+  const pfade = pfadeFuer(tag, modus)
+  const kurz = modus === 'stichpunkte'
   const inhalt = (
     <>
       <span className="flex items-center gap-1.5 text-xs font-medium text-ifm-gray">
@@ -254,38 +267,45 @@ function Kachel({
         {tag.titel ?? tag.tagebuch_titel ?? 'Ohne Titel'}
       </span>
       <span className="mt-3 block text-xs text-ifm-gray">
-        {tag.deck_pfad
-          ? `Stand ${formatiereDatum(tag.deck_aktualisiert_am)}`
-          : 'kein Deck, Themen im Tagebuch'}
+        {!tag.deck_pfad
+          ? 'kein Deck, Themen im Tagebuch'
+          : kurz && !pfade.deck
+            ? 'Stichpunkt-Fassung folgt noch'
+            : `Stand ${formatiereDatum(tag.deck_aktualisiert_am)}${kurz ? ' · Notizen als Stichpunkte' : ''}`}
       </span>
     </>
   )
 
   const farbe = FARBEN[tag.art] ?? FARBEN.kurstag
   const rahmen = `flex flex-col rounded-xl shadow-sm border ${vermittelt ? farbe.erledigt : farbe.offen} ${
-    tag.deck_pfad ? 'hover:border-ifm-red transition-colors' : ''
+    pfade.deck ? 'hover:border-ifm-red transition-colors' : ''
   }`
 
   const downloads = (
     [
-      ['trainer', 'Trainer', 'Trainerfassung (HTML, mit Cockpit und Notizen)', tag.deck_pfad],
+      [
+        'trainer',
+        'Trainer',
+        kurz ? 'Trainerfassung (HTML, mit Cockpit, Notizen als Stichpunkte)' : 'Trainerfassung (HTML, mit Cockpit und Notizen)',
+        pfade.deck,
+      ],
       ['teilnehmer', 'Teilnehmer', 'Teilnehmerfassung (HTML, ohne Notizen)', tag.teilnehmer_pfad],
       ['pdf', 'PDF', 'PDF der Teilnehmerfassung', tag.pdf_pfad],
       [
         'quellen',
         'Quellen',
         'Quellpaket zum Bearbeiten mit Claude (Folien, Bilder, Engine, Anleitung)',
-        fassung ? tag.quellen_pfad : null,
+        fassung ? pfade.quellen : null,
       ],
     ] as const
   ).filter(([, , , pfad]) => pfad)
 
   return (
     <div className={rahmen}>
-      {tag.deck_pfad ? (
+      {pfade.deck ? (
         <button
           // Eigene Notizen nur, solange man sie auch schreiben darf (Stufe "notizen" oder Besitzer)
-          onClick={() => deckOeffnen(tag.deck_pfad!, bezeichnung(tag), anpassung, notizen ? tag.id : undefined)}
+          onClick={() => deckOeffnen(pfade.deck!, bezeichnung(tag), anpassung, notizen ? tag.id : undefined)}
           className="block w-full flex-1 text-left p-4 cursor-pointer"
         >
           {inhalt}
@@ -309,7 +329,7 @@ function Kachel({
               kurstagId={art === 'trainer' && notizen ? tag.id : undefined}
             />
           ))}
-          {notizen && tag.deck_pfad && (
+          {notizen && pfade.deck && (
             <Link
               to={`/notizen/${tag.id}`}
               className="ml-auto font-medium text-ifm-blue underline-offset-2 hover:underline"

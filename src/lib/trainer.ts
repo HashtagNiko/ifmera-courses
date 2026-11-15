@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import type { NotizenModus } from './kurse'
 
 /**
  * Trainer und Freigaben (Baustein 1, SPEC.md).
@@ -46,7 +47,18 @@ export interface Freigabe {
   kurs_id: string
   trainer_id: string
   stufe: Stufe
+  /** ausführliche Trainer-Notizen oder nur Stichpunkte (Baustein 7) */
+  notiz_umfang: NotizenModus
 }
+
+export const NOTIZEN_MODI: { wert: NotizenModus; name: string; erklaerung: string }[] = [
+  { wert: 'voll', name: 'Notizen: vollständig', erklaerung: 'deine ausführlichen Trainer-Notizen im Cockpit und in den Dateien.' },
+  {
+    wert: 'stichpunkte',
+    name: 'Notizen: nur Stichpunkte',
+    erklaerung: 'statt deiner Notizen nur Stichpunkte, auch im Quellpaket. Gibt es für einen Tag noch keine Stichpunkte, fehlt dort das Trainer-Deck.',
+  },
+]
 
 /** Eigenes Profil; `null` heißt: nicht für das Kurs-Tool freigeschaltet. */
 export async function eigenesProfilLaden(kontoId: string): Promise<Trainer | null> {
@@ -74,20 +86,32 @@ export async function freigabenLaden(kursIds: string[]): Promise<Freigabe[]> {
   if (kursIds.length === 0) return []
   const { data, error } = await supabase
     .from('kt_kurs_freigaben')
-    .select('kurs_id, trainer_id, stufe')
+    .select('kurs_id, trainer_id, stufe, notiz_umfang')
     .in('kurs_id', kursIds)
   if (error) throw new Error(error.message)
   return (data ?? []) as Freigabe[]
 }
 
-/** Die eigenen Freigaben: zu welchem fremden Kurs man welche Stufe hat. */
-export async function meineStufenLaden(ichId: string): Promise<Map<string, Stufe>> {
+export interface MeineFreigabe {
+  stufe: Stufe
+  umfang: NotizenModus
+}
+
+/** Die eigenen Freigaben: zu welchem fremden Kurs man welche Stufe und welche Notizen hat. */
+export async function meineFreigabenLaden(ichId: string): Promise<Map<string, MeineFreigabe>> {
   const { data, error } = await supabase
     .from('kt_kurs_freigaben')
-    .select('kurs_id, stufe')
+    .select('kurs_id, stufe, notiz_umfang')
     .eq('trainer_id', ichId)
   if (error) throw new Error(error.message)
-  return new Map((data ?? []).map((f) => [f.kurs_id as string, f.stufe as Stufe]))
+  return new Map(
+    (data ?? []).map((f) => [f.kurs_id as string, { stufe: f.stufe as Stufe, umfang: (f.notiz_umfang as NotizenModus) ?? 'voll' }]),
+  )
+}
+
+/** Welche Notizen bekommt man in diesem Kurs? Besitzer immer die ausführlichen. */
+export function notizenModus(besitzerId: string, ichId: string, freigabe: MeineFreigabe | undefined): NotizenModus {
+  return besitzerId === ichId ? 'voll' : (freigabe?.umfang ?? 'voll')
 }
 
 /** Darf man an diesem Kurs eigene Notizen schreiben? Besitzer immer, sonst ab Stufe "notizen". */
@@ -108,10 +132,15 @@ export function darfFassung(besitzerId: string, ichId: string, stufe: Stufe | un
  * ein verweigerter Schritt wie ein Erfolg aus (so geschehen beim Löschen im Bucket,
  * 12.09.2026).
  */
-export async function freigabeSetzen(kursId: string, trainerId: string, stufe: Stufe): Promise<void> {
+export async function freigabeSetzen(
+  kursId: string,
+  trainerId: string,
+  stufe: Stufe,
+  umfang: NotizenModus = 'voll',
+): Promise<void> {
   const { data, error } = await supabase
     .from('kt_kurs_freigaben')
-    .upsert({ kurs_id: kursId, trainer_id: trainerId, stufe }, { onConflict: 'kurs_id,trainer_id' })
+    .upsert({ kurs_id: kursId, trainer_id: trainerId, stufe, notiz_umfang: umfang }, { onConflict: 'kurs_id,trainer_id' })
     .select('kurs_id')
   if (error) throw new Error(error.message)
   if (!data?.length) throw new Error('Die Freigabe wurde nicht gespeichert. Gehört dir der Kurs?')

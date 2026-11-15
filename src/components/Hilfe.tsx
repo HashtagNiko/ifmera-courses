@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { STUFEN } from '../lib/trainer'
+import { NOTIZEN_MODI, STUFEN } from '../lib/trainer'
 
 /**
  * Hilfe (Baustein 6): Knopf „?“ in der Kopfzeile. Zeigt, was auf der aktuellen Seite geht, darunter den
@@ -185,6 +185,10 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
         Ist der Kurs dir nur freigegeben, steht oben „Freigegeben von …“. Nutzen kannst du ihn, verändern
         nicht. In Decks, die du öffnest oder herunterlädst, steht dein Name in der Fußzeile.
       </li>
+      <li>
+        Steht auf der Kachel „Notizen als Stichpunkte“, zeigt das Cockpit statt ausführlicher Notizen
+        Stichpunkte; das gilt auch für Download und Quellpaket.
+      </li>
     </Liste>
   ),
   tagebuch: (
@@ -225,6 +229,18 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
             <b>{s.name}:</b> {s.erklaerung}
           </li>
         ))}
+      </Liste>
+      <p className="mt-2">Daneben wählst du, welche Trainer-Notizen er bekommt:</p>
+      <Liste>
+        {NOTIZEN_MODI.map((m) => (
+          <li key={m.wert}>
+            <b>{m.name}:</b> {m.erklaerung}
+          </li>
+        ))}
+        <li>
+          Mit „nur Stichpunkte“ sieht er auch keine fremden Fassungen, denn die enthalten ausführliche Notizen.
+          Seine eigenen Fassungen sieht er immer.
+        </li>
       </Liste>
     </>
   ),

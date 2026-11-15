@@ -24,6 +24,33 @@ export interface Kurstag {
   pdf_pfad: string | null
   /** Quellpaket (Zip) zum Bearbeiten mit Claude; lesbar ab Stufe "fassung" (Baustein 4) */
   quellen_pfad: string | null
+  /** Stichpunkt-Fassung von Deck und Quellpaket (Baustein 7); leer, wenn es keine gibt */
+  trainer_kurz_pfad: string | null
+  quellen_kurz_pfad: string | null
+}
+
+/** Welche Trainer-Notizen jemand bekommt: ausführlich oder nur Stichpunkte (Baustein 7). */
+export type NotizenModus = 'voll' | 'stichpunkte'
+
+/**
+ * Die Dateien, die jemand mit diesem Modus laden darf. Bei "stichpunkte" sind es die kurzen Fassungen;
+ * fehlen sie, gibt es für diesen Tag (noch) kein Trainer-Deck. Durchgesetzt wird das von der Datenbank,
+ * hier wird nur der passende Pfad gewählt.
+ */
+export function pfadeFuer(
+  tag: {
+    deck_pfad: string | null
+    quellen_pfad: string | null
+    quellen_hash?: string | null
+    trainer_kurz_pfad: string | null
+    quellen_kurz_pfad: string | null
+    quellen_kurz_hash?: string | null
+  },
+  modus: NotizenModus,
+): { deck: string | null; quellen: string | null; quellenHash: string | null } {
+  return modus === 'stichpunkte'
+    ? { deck: tag.trainer_kurz_pfad, quellen: tag.quellen_kurz_pfad, quellenHash: tag.quellen_kurz_hash ?? null }
+    : { deck: tag.deck_pfad, quellen: tag.quellen_pfad, quellenHash: tag.quellen_hash ?? null }
 }
 
 export type DownloadArt = 'trainer' | 'teilnehmer' | 'pdf' | 'quellen'
@@ -48,7 +75,7 @@ export async function kurstageLaden(kursId: string): Promise<Kurstag[]> {
     .from('kurstage')
     // Eine einzelne Zeichenkette, nicht zusammengesetzt: supabase-js leitet die
     // Typen aus dem Literal ab und verliert sie bei einer Verkettung.
-    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am, liefername, teilnehmer_pfad, pdf_pfad, quellen_pfad')
+    .select('id, art, nummer, position, segment, segment_titel, titel, tagebuch_titel, deck_pfad, deck_aktualisiert_am, liefername, teilnehmer_pfad, pdf_pfad, quellen_pfad, trainer_kurz_pfad, quellen_kurz_pfad')
     .eq('kurs_id', kursId)
     .order('position', { nullsFirst: false })
     .order('nummer')
@@ -125,6 +152,9 @@ export interface KurstagMitKurs {
   liefername: string | null
   quellen_pfad: string | null
   quellen_hash: string | null
+  trainer_kurz_pfad: string | null
+  quellen_kurz_pfad: string | null
+  quellen_kurz_hash: string | null
   kurs_id: string
   kurse: { name: string; besitzer_id: string } | null
 }
@@ -132,7 +162,7 @@ export interface KurstagMitKurs {
 export async function kurstagLaden(id: string): Promise<KurstagMitKurs | null> {
   const { data, error } = await supabase
     .from('kurstage')
-    .select('id, art, nummer, titel, tagebuch_titel, deck_pfad, liefername, quellen_pfad, quellen_hash, kurs_id, kurse(name, besitzer_id)')
+    .select('id, art, nummer, titel, tagebuch_titel, deck_pfad, liefername, quellen_pfad, quellen_hash, trainer_kurz_pfad, quellen_kurz_pfad, quellen_kurz_hash, kurs_id, kurse(name, besitzer_id)')
     .eq('id', id)
     .maybeSingle()
   if (error) throw new Error(error.message)

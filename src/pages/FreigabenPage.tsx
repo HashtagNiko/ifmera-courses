@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import Kopfzeile from '../components/Kopfzeile'
-import { kurseLaden, type Kurs } from '../lib/kurse'
+import { kurseLaden, type Kurs, type NotizenModus } from '../lib/kurse'
 import { useIch } from '../lib/TrainerContext'
 import {
+  NOTIZEN_MODI,
   STUFEN,
   freigabeEntfernen,
   freigabeSetzen,
@@ -73,6 +74,11 @@ export default function FreigabenPage() {
                 <span className="font-medium text-ifm-blue">{s.name}:</span> {s.erklaerung}
               </li>
             ))}
+            {NOTIZEN_MODI.map((m) => (
+              <li key={m.wert}>
+                <span className="font-medium text-ifm-blue">{m.name}:</span> {m.erklaerung}
+              </li>
+            ))}
           </ul>
         </section>
 
@@ -99,7 +105,7 @@ export default function FreigabenPage() {
             andere={andere}
             name={name}
             gesperrt={arbeitet}
-            setzen={(trainerId, stufe) => ausfuehren(() => freigabeSetzen(kurs.id, trainerId, stufe))}
+            setzen={(trainerId, stufe, umfang) => ausfuehren(() => freigabeSetzen(kurs.id, trainerId, stufe, umfang))}
             entfernen={(trainerId) => {
               if (!window.confirm(`Freigabe von „${kurs.name}“ für ${name(trainerId)} entfernen?`)) return
               ausfuehren(() => freigabeEntfernen(kurs.id, trainerId))
@@ -125,12 +131,13 @@ function KursFreigaben({
   andere: Trainer[]
   name: (id: string) => string
   gesperrt: boolean
-  setzen: (trainerId: string, stufe: Stufe) => void
+  setzen: (trainerId: string, stufe: Stufe, umfang: NotizenModus) => void
   entfernen: (trainerId: string) => void
 }) {
   const offen = andere.filter((t) => !freigaben.some((f) => f.trainer_id === t.id))
   const [neuTrainer, setNeuTrainer] = useState('')
   const [neuStufe, setNeuStufe] = useState<Stufe>('nutzen')
+  const [neuUmfang, setNeuUmfang] = useState<NotizenModus>('voll')
 
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
@@ -146,7 +153,12 @@ function KursFreigaben({
               <StufenAuswahl
                 wert={f.stufe}
                 gesperrt={gesperrt}
-                onChange={(stufe) => setzen(f.trainer_id, stufe)}
+                onChange={(stufe) => setzen(f.trainer_id, stufe, f.notiz_umfang)}
+              />
+              <UmfangAuswahl
+                wert={f.notiz_umfang}
+                gesperrt={gesperrt}
+                onChange={(umfang) => setzen(f.trainer_id, f.stufe, umfang)}
               />
               <button
                 onClick={() => entfernen(f.trainer_id)}
@@ -176,11 +188,13 @@ function KursFreigaben({
             ))}
           </select>
           <StufenAuswahl wert={neuStufe} gesperrt={gesperrt} onChange={setNeuStufe} />
+          <UmfangAuswahl wert={neuUmfang} gesperrt={gesperrt} onChange={setNeuUmfang} />
           <button
             onClick={() => {
-              setzen(neuTrainer, neuStufe)
+              setzen(neuTrainer, neuStufe, neuUmfang)
               setNeuTrainer('')
               setNeuStufe('nutzen')
+              setNeuUmfang('voll')
             }}
             disabled={gesperrt || !neuTrainer}
             className="rounded-lg bg-ifm-blue px-3 py-1.5 font-medium text-white disabled:opacity-50"
@@ -212,6 +226,32 @@ function StufenAuswahl({
       {STUFEN.map((s) => (
         <option key={s.wert} value={s.wert}>
           {s.name}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+/** Notizen ausführlich oder nur als Stichpunkte (Baustein 7) */
+function UmfangAuswahl({
+  wert,
+  gesperrt,
+  onChange,
+}: {
+  wert: NotizenModus
+  gesperrt: boolean
+  onChange: (umfang: NotizenModus) => void
+}) {
+  return (
+    <select
+      value={wert}
+      onChange={(e) => onChange(e.target.value as NotizenModus)}
+      disabled={gesperrt}
+      className="rounded-lg border border-ifm-lightblue px-2 py-1.5 text-ifm-blue"
+    >
+      {NOTIZEN_MODI.map((m) => (
+        <option key={m.wert} value={m.wert}>
+          {m.name}
         </option>
       ))}
     </select>

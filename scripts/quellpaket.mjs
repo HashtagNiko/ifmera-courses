@@ -87,13 +87,16 @@ export function quellpaketPlanen(segmentOrdner, deckDatei, { anleitung = '', kur
   return { ordnername: deckDatei.replace(/\.html$/i, ''), dateien, texte, pruefsumme }
 }
 
-/** Erzeugt das Zip zu einem Plan. */
+/**
+ * Erzeugt das Zip zu einem Plan. `plan.ueberschrieben` (optional, Baustein 7) ersetzt einzelne Dateien
+ * durch geänderten Inhalt, etwa Folienquellen mit Stichpunkten statt Notizen.
+ */
 export async function quellpaketZippen(plan) {
   const zip = new JSZip()
   const ordner = zip.folder(plan.ordnername)
   const optionen = { date: FESTES_DATUM, compression: 'DEFLATE', compressionOptions: { level: 6 } }
   for (const [name, text] of Object.entries(plan.texte)) ordner.file(name, text, optionen)
-  for (const d of plan.dateien) ordner.file(d.ziel, readFileSync(d.quelle), optionen)
+  for (const d of plan.dateien) ordner.file(d.ziel, plan.ueberschrieben?.[d.ziel] ?? readFileSync(d.quelle), optionen)
   return zip.generateAsync({ type: 'nodebuffer', platform: 'UNIX' })
 }
 

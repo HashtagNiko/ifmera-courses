@@ -113,6 +113,8 @@ describe('Beschriftungen in Hilfe und Anleitung gibt es im Tool wirklich', () =>
     '+ eigene Kopie bearbeiten',
     '+ eigene Notizen',
     'Freigegeben von',
+    'Notizen als Stichpunkte',
+    'nur Stichpunkte',
   ]
 
   for (const b of beschriftungen) {

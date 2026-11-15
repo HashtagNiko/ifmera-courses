@@ -37,7 +37,9 @@ import { join, basename, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createInterface } from 'node:readline'
 import { createClient } from '@supabase/supabase-js'
+import JSZip from 'jszip'
 import { kursregelnLesen, quellpaketPlanen, quellpaketZippen } from './quellpaket.mjs'
+import { kurzDeck, kurzQuellpaket, leckPruefen } from './stichpunkte.mjs'
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const env = ladeEnv(join(WURZEL, '.env'))
@@ -124,14 +126,19 @@ async function synchronisiereKurs(kurs) {
 
   // Nur Kurstage: Projekttage tragen dieselben Nummern (Projekttag 1 neben
   // Kurstag 1) und wuerden die Pruefsummen sonst ueberschreiben.
+  // Stichpunkt-Fassungen (Baustein 7): nur fuer Kurse mit Feld "stichpunkte" in kurse.config.json
+  const stichpunkteOrdner = kurs.stichpunkte ? join(KURS_WURZEL, kurs.stichpunkte) : null
   const { data: bestand } = await supabase
     .from('kurstage')
-    .select('nummer, deck_hash, teilnehmer_hash, pdf_hash, quellen_hash')
+    .select(
+      'nummer, deck_hash, teilnehmer_hash, pdf_hash, quellen_hash' +
+        (stichpunkteOrdner ? ', trainer_kurz_hash, quellen_kurz_hash' : ''),
+    )
     .eq('kurs_id', kursId)
     .eq('art', 'kurstag')
 
   const bekannt = new Map((bestand ?? []).map((z) => [z.nummer, z]))
-  const zahl = { trainer: 0, teilnehmer: 0, pdf: 0, quellen: 0, unveraendert: 0, ausgegeben: 0 }
+  const zahl = { trainer: 0, teilnehmer: 0, pdf: 0, quellen: 0, 'trainer-kurz': 0, 'quellen-kurz': 0, unveraendert: 0, ausgegeben: 0 }
   // Gestaltungsregeln fuer das Quellpaket (Abschnitte 3–6 der CLAUDE.md, Feld "regeln")
   const kursregeln = kursregelnLesen(kurs.regeln ? join(KURS_WURZEL, kurs.regeln) : null)
 
@@ -166,6 +173,65 @@ async function synchronisiereKurs(kurs) {
       console.log(`  Tag ${deck.nummer}: kein Quellpaket (${e.message})`)
     }
 
+    // Stichpunkt-Fassung von Deck und Quellpaket (Baustein 7). Ohne Stichpunkte-Datei: keine.
+    // Vor jedem Hochladen die Leck-Pruefung; findet sie einen Satz der Original-Notizen, wird fuer
+    // diesen Tag nichts Kurzes hochgeladen.
+    let kurz = null
+    const stichpunkteDatei = stichpunkteOrdner && join(stichpunkteOrdner, basename(deck.pfad).replace(/\.html$/i, '.json'))
+    if (stichpunkteDatei && existsSync(stichpunkteDatei)) {
+      try {
+        const sp = JSON.parse(readFileSync(stichpunkteDatei, 'utf8'))
+        const original = trainer.inhalt.toString('utf8')
+        const kd = kurzDeck(original, sp)
+        const deckInhalt = Buffer.from(kd.html, 'utf8')
+        kurz = {
+          original,
+          ohne: kd.ohne,
+          deck: {
+            art: 'Trainer-kurz',
+            datei: { inhalt: deckInhalt, hash: createHash('sha256').update(deckInhalt).digest('hex') },
+            ziel: `${kurs.slug}/trainer-kurz/${basename(deck.pfad)}`,
+            typ: 'text/html; charset=utf-8',
+          },
+          paket: null,
+        }
+        kurz.deck.neu = ERZWINGEN || alt.trainer_kurz_hash !== kurz.deck.datei.hash
+        const leck = leckPruefen(original, [{ name: 'deck.html', inhalt: kd.html }])
+        if (leck.length) throw new Error(`Leck-Pruefung Deck: ${leck.length} Satz/Saetze der Original-Notizen gefunden`)
+        if (paket) {
+          const kp = kurzQuellpaket(paket.plan, sp, readFileSync)
+          kurz.paket = {
+            plan: kp.plan,
+            ziel: `${kurs.slug}/quellen-kurz/${paket.plan.ordnername}.zip`,
+            neu: ERZWINGEN || alt.quellen_kurz_hash !== kp.plan.pruefsumme,
+            groesse: null,
+            zip: null,
+          }
+          if (kurz.paket.neu || TROCKEN) {
+            kurz.paket.zip = await quellpaketZippen(kp.plan)
+            const inhalt = await JSZip.loadAsync(kurz.paket.zip)
+            const texte = []
+            for (const [name, e] of Object.entries(inhalt.files)) {
+              if (!e.dir && /\.(html?|md|json|py|txt|css|js)$/i.test(name)) texte.push({ name, inhalt: await e.async('string') })
+            }
+            const leckPaket = leckPruefen(original, texte)
+            if (leckPaket.length) throw new Error(`Leck-Pruefung Quellpaket: ${leckPaket.length} Satz/Saetze gefunden (${leckPaket[0].datei})`)
+            kurz.paket.groesse = kurz.paket.zip.length
+          }
+        }
+        if (kurz.ohne.length) {
+          console.log(
+            `  Tag ${deck.nummer}: ${kurz.ohne.length} Folie(n) ohne passende Stichpunkte (dort steht "Stichpunkte folgen."): ` +
+              kurz.ohne.map((f) => `${f.nr} "${f.titel}"`).join(', '),
+          )
+        }
+      } catch (e) {
+        console.error(`  Tag ${deck.nummer}: Stichpunkt-Fassung NICHT erzeugt: ${e.message}`)
+        process.exitCode = 1
+        kurz = null
+      }
+    }
+
     // Die Dateien laden wir nur bei echter Aenderung; Titel, Segmentname und
     // Liefername schreiben wir immer, die koennen sich auch ohne neue Datei aendern.
     const schritte = [
@@ -190,17 +256,20 @@ async function synchronisiereKurs(kurs) {
         neu: ERZWINGEN || alt.pdf_hash !== pdf.hash,
         typ: 'application/pdf',
       },
+      kurz?.deck,
     ].filter(Boolean)
 
     for (const s of schritte.filter((s) => s.neu)) {
       console.log(`  Tag ${deck.nummer}: ${s.art} geaendert -> ${s.ziel} (${mb(s.datei.inhalt.length)})`)
     }
     if (paket?.neu) console.log(`  Tag ${deck.nummer}: Quellen geaendert -> ${paket.ziel}`)
+    if (kurz?.paket?.neu) console.log(`  Tag ${deck.nummer}: Quellen (Stichpunkte) geaendert -> ${kurz.paket.ziel}`)
     if (nameTeilnehmer || namePdf) zahl.ausgegeben++
 
     if (TROCKEN) {
       for (const s of schritte) s.neu ? zahl[s.art.toLowerCase()]++ : zahl.unveraendert++
       if (paket) paket.neu ? zahl.quellen++ : zahl.unveraendert++
+      if (kurz?.paket) kurz.paket.neu ? zahl['quellen-kurz']++ : zahl.unveraendert++
       continue
     }
 
@@ -230,6 +299,16 @@ async function synchronisiereKurs(kurs) {
         fehler = true
       }
       paket.groesse = zip.length
+    }
+    if (kurz?.paket?.neu && !fehler) {
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(kurz.paket.ziel, kurz.paket.zip, { contentType: 'application/zip', upsert: true, cacheControl: '0' })
+      if (error) {
+        console.error(`  Fehler beim Upload (Quellen, Stichpunkte) von Tag ${deck.nummer}: ${error.message}`)
+        process.exitCode = 1
+        fehler = true
+      }
     }
     if (fehler) continue
 
@@ -261,6 +340,17 @@ async function synchronisiereKurs(kurs) {
     // Groesse nur, wenn das Zip neu gebaut wurde; sonst bleibt der gespeicherte Wert
     if (!paket) zeile.quellen_groesse = null
     else if (paket.neu) zeile.quellen_groesse = paket.groesse
+    // Stichpunkt-Fassungen nur bei Kursen, die welche haben; ohne Datei fuer diesen Tag: leer
+    if (stichpunkteOrdner) {
+      const kd = schritte.find((s) => s.art === 'Trainer-kurz')
+      zeile.trainer_kurz_pfad = kd?.ziel ?? null
+      zeile.trainer_kurz_hash = kd?.datei.hash ?? null
+      zeile.trainer_kurz_groesse = kd?.datei.inhalt.length ?? null
+      zeile.quellen_kurz_pfad = kurz?.paket?.ziel ?? null
+      zeile.quellen_kurz_hash = kurz?.paket?.plan.pruefsumme ?? null
+      if (!kurz?.paket) zeile.quellen_kurz_groesse = null
+      else if (kurz.paket.neu) zeile.quellen_kurz_groesse = kurz.paket.groesse
+    }
     // Das Stand-Datum nur anfassen, wenn das Trainer-Deck wirklich neu ist.
     if (schritte[0].neu) zeile.deck_aktualisiert_am = new Date().toISOString()
 
@@ -275,11 +365,13 @@ async function synchronisiereKurs(kurs) {
     }
     for (const s of schritte) s.neu ? zahl[s.art.toLowerCase()]++ : zahl.unveraendert++
     if (paket) paket.neu ? zahl.quellen++ : zahl.unveraendert++
+    if (kurz?.paket) kurz.paket.neu ? zahl['quellen-kurz']++ : zahl.unveraendert++
   }
 
   const bilanz =
     `${zahl.trainer} Trainer-Deck(s), ${zahl.teilnehmer} Teilnehmerfassung(en), ${zahl.pdf} PDF(s),` +
     ` ${zahl.quellen} Quellpaket(e)` +
+    (stichpunkteOrdner ? `, ${zahl['trainer-kurz']} Stichpunkt-Deck(s), ${zahl['quellen-kurz']} Stichpunkt-Quellpaket(e)` : '') +
     ` ${TROCKEN ? 'waeren geladen worden' : 'geladen'}, ${zahl.unveraendert} Datei(en) unveraendert;` +
     ` ${zahl.ausgegeben} von ${decks.length} Tagen ausgegeben.`
   console.log(TROCKEN ? `  Probelauf: ${bilanz}` : `  Fertig: ${bilanz}`)

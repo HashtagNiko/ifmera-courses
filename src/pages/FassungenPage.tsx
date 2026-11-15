@@ -18,8 +18,8 @@ import {
   type FassungFreigabe,
   type FassungStufe,
 } from '../lib/fassungen'
-import { dateiHerunterladen, kurstagLaden, type KurstagMitKurs } from '../lib/kurse'
-import { darfFassung, darfNotizen, meineStufenLaden, trainerLaden, type Trainer } from '../lib/trainer'
+import { dateiHerunterladen, kurstagLaden, pfadeFuer, type KurstagMitKurs, type NotizenModus } from '../lib/kurse'
+import { darfFassung, darfNotizen, meineFreigabenLaden, notizenModus, trainerLaden, type Trainer } from '../lib/trainer'
 import { useIch } from '../lib/TrainerContext'
 
 /**
@@ -51,12 +51,14 @@ function FassungenSeite({ tagId }: { tagId: string | undefined }) {
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(true)
   const [arbeitet, setArbeitet] = useState(false)
+  // Baustein 7: mit "nur Stichpunkte" ist das Original die Stichpunkt-Fassung (Quellpaket und Stand)
+  const [modus, setModus] = useState<NotizenModus>('voll')
 
   const neuLaden = useCallback(async () => {
     if (!tagId) return
     const t = await kurstagLaden(tagId)
     if (!t) throw new Error('Diesen Kurstag gibt es nicht, oder er ist nicht für dich freigegeben.')
-    const [f, stufen, trainer] = await Promise.all([fassungenLaden(t.id), meineStufenLaden(ich.id), trainerLaden()])
+    const [f, meine, trainer] = await Promise.all([fassungenLaden(t.id), meineFreigabenLaden(ich.id), trainerLaden()])
     const fr = await fassungsFreigabenLaden(f.map((x) => x.id))
     // Freigeben kann man nur an Trainer, die den Kurs selbst sehen dürfen
     const andere = trainer.filter((x) => x.id !== ich.id && x.aktiv)
@@ -69,8 +71,9 @@ function FassungenSeite({ tagId }: { tagId: string | undefined }) {
     setNamen(new Map(trainer.map((x) => [x.id, x.anzeigename])))
     setEmpfaenger(mitZugang.filter((x): x is Trainer => x !== null))
     const besitzer = t.kurse?.besitzer_id ?? ''
-    setDarf(darfFassung(besitzer, ich.id, stufen.get(t.kurs_id)))
-    setNotizen(darfNotizen(besitzer, ich.id, stufen.get(t.kurs_id)))
+    setDarf(darfFassung(besitzer, ich.id, meine.get(t.kurs_id)?.stufe))
+    setNotizen(darfNotizen(besitzer, ich.id, meine.get(t.kurs_id)?.stufe))
+    setModus(notizenModus(besitzer, ich.id, meine.get(t.kurs_id)))
   }, [tagId, ich.id])
 
   useEffect(() => {
@@ -104,7 +107,9 @@ function FassungenSeite({ tagId }: { tagId: string | undefined }) {
   const grundlageStand = (f: Fassung): string | null =>
     f.grundlage_art === 'fassung'
       ? (fassungen.find((x) => x.id === f.grundlage_fassung_id)?.quellen_hash ?? null)
-      : (tag?.quellen_hash ?? null)
+      : tag
+        ? pfadeFuer(tag, modus).quellenHash
+        : null
   const grundlageName = (f: Fassung): string => {
     if (f.grundlage_art === 'original') return 'Original'
     if (!f.grundlage_fassung_id) return 'eine inzwischen gelöschte Fassung'
@@ -158,11 +163,16 @@ function FassungenSeite({ tagId }: { tagId: string | undefined }) {
         {!laedt && tag && darf && (
           <section className="rounded-xl bg-white p-5 shadow-sm">
             <h3 className="font-bold text-ifm-blue">Original</h3>
-            {tag.quellen_pfad ? (
+            {modus === 'stichpunkte' && (
+              <p className="mt-1 text-sm text-ifm-gray">
+                Für dich enthält das Quellpaket statt der Trainer-Notizen Stichpunkte.
+              </p>
+            )}
+            {pfadeFuer(tag, modus).quellen ? (
               <button
                 disabled={arbeitet}
                 onClick={() =>
-                  ausfuehren(() => dateiHerunterladen(tag.quellen_pfad!, `${dateiname(basis)} (Quellen).zip`))
+                  ausfuehren(() => dateiHerunterladen(pfadeFuer(tag, modus).quellen!, `${dateiname(basis)} (Quellen).zip`))
                 }
                 className="mt-2 rounded-lg bg-ifm-blue px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
@@ -242,7 +252,7 @@ function FassungenSeite({ tagId }: { tagId: string | undefined }) {
                   titel: angaben.titel,
                   bemerkung: angaben.bemerkung,
                   grundlageFassungId: grundlage?.id ?? null,
-                  grundlageHash: grundlage ? grundlage.quellen_hash : tag.quellen_hash,
+                  grundlageHash: grundlage ? grundlage.quellen_hash : pfadeFuer(tag, modus).quellenHash,
                   deck: angaben.deck,
                   quellen: angaben.quellen,
                 })
