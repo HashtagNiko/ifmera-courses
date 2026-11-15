@@ -200,8 +200,8 @@ Test-Trainers ist sichtbar, und Niko kann ihr Quellpaket laden und eine eigene K
 - Alle Trainer eines Durchlaufs sehen Plan, Tagebuch und Haken, dürfen Haken setzen und sehen die im
   Plan eingetragenen Fassungen (nur lesen). Plan und Trainerliste ändert der Besitzer des Durchlaufs.
 - Voraussetzung: Der Kurs ist für jeden Mitwirkenden mindestens auf `nutzen` freigegeben.
-- **Annahme:** Notizen bleiben privat, auch im gemeinsamen Durchlauf. **Präzisiert (15.11.2026, Claude,
-  offen bis Nikos Antwort auf OFFENE-FRAGEN Nr. 23):** Das gilt für die Folien-Notizen im Cockpit
+- **Annahme:** Notizen bleiben privat, auch im gemeinsamen Durchlauf. **Präzisiert (15.11.2026, von Niko
+  bestätigt, OFFENE-FRAGEN Nr. 23):** Das gilt für die Folien-Notizen im Cockpit
   (Baustein 3). Die Tagesnotiz im Tagebuch gehört zum Durchlauf: Alle Beteiligten sehen und bearbeiten
   sie. Gleichzeitiges Schreiben überschreibt nichts; wer zu spät speichert, bekommt einen Hinweis.
 - **Hinweis (OFFENE-FRAGEN Nr. 24):** Eine Fassung im Plan sehen alle im Durchlauf, auch später

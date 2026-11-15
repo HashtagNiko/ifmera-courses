@@ -2,8 +2,17 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
-## 2026-11-13 · Baustein 5 · Gemeinsamer Durchlauf (vorbereitet, nicht eingespielt)
+## 2026-11-15 · Baustein 5 · Gemeinsamer Durchlauf (eingespielt; vorbereitet ab 13.11.)
 
+- **Eingespielt am 15.11.2026 nach Nikos „ja“** (gelber Schritt, inkl. OFFENE-FRAGEN Nr. 23): Sicherung
+  `backup/2026-11-15_vor_baustein5.json` und Migration in einem Befehl; Selbstprüfung KT-G00–G12 bestanden;
+  danach alle 5 Rechte-Tests live grün; lesend geprüft: anon ohne Rechte auf Tabellen und Funktionen des
+  Kurs-Tools, alle `kt_`-Tabellen mit RLS, Regeln und drei Trigger wie erwartet, `kt_migrationen` stimmt mit
+  dem Repo überein. Erst danach App nach `main`. Ehrlich vermerkt: Der erste Anlauf brach vor der Migration
+  ab, weil meine eigene Prüfung der Sicherungsdatei einen falschen Schlüssel las; die Kette hat wie gewollt
+  gestoppt, die Datenbank blieb unverändert.
+- `supabase/sicherung.sql`: neue Tabellen `kt_durchlauf_trainer`, `kt_durchlauf_tage`; neu auch
+  Spaltenrechte und Trigger des Kurs-Tools.
 - Migration `20261113220000_kt_gemeinsamer_durchlauf.sql` (**ersetzt Regeln, gelb**): Mitwirkende
   (`kt_durchlauf_trainer`), Plan (`kt_durchlauf_tage`: Kurstag → Trainer + eigene Fassung),
   `fortschritt.geaendert_von` per Trigger; Regeln für Durchläufe und Haken um Mitwirkende erweitert;
