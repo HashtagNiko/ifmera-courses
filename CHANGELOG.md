@@ -63,6 +63,8 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   der Test den Fehler fest); Gegenprobe mit dem alten Deck aus der Sicherung schlägt an. 49 Tests grün.
 - Google Drive nicht angefasst (Nikos Schritt).
 - Nikos Laien-Test (Stand-Datum auf der Kachel, Cockpit beim Blättern, Knopf „Präsentieren“): bestanden.
+- Die Sicherungskopie `backup/2026-11-15_decks_vor_neubau/` (221 Dateien, 563 MB) auf Nikos Wunsch
+  gelöscht; die Datenbank-Sicherungen in `backup/` bleiben.
 
 ## 2026-11-15 · Bausteine 2–5 · Gesamttest bestanden, Testdaten entfernt
 
