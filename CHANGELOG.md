@@ -17,6 +17,8 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   ergänzt. App wählt im Zweifel die kurze Fassung und zeigt fremde Kurse erst, wenn die eigene Freigabe
   geladen ist. Danach: Sicherung `backup/2026-11-15_vor_stichpunkte_teil2.json`, Teil 2 eingespielt,
   Rechte-Tests 7/7, Downloads 184/184, anon ohne Rechte. 87 Tests grün.
+- Nikos Laien-Test mit dem Test-Konto (H&G mit „nur Stichpunkte“: Hinweis, Kacheln, Cockpit mit
+  Stichpunkten; bei Niko weiter die ausführlichen Notizen): **in Ordnung**. Baustein 7 abgeschlossen.
 - Stichpunkte für alle 15 H&G-Tage (423 Folien, 1.862 Stichpunkte, 1–5 je Folie, zusammen etwa halb so
   lang wie die Notizen), geschrieben von sechs Sub-Agenten parallel, danach zentral geprüft (Anzahl,
   Titel, Länge ≤ 120 Zeichen, Form, kein ganzer Satz aus der Notiz). Abgelegt im Kursordner
