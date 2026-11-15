@@ -21,12 +21,20 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   (sonst blockiert das Löschen eines Trainers); Indizes für Plan und „wer“; Selbstprüfung prüft Inhalt
   der Regeln und alle Spaltenrechte auf `durchlaeufe`; Test um upsert-Wege, Hilfsfunktionen für Fremde,
   später Aufgenommene und gelöschte Trainer ergänzt; `lock_timeout` auch im Test.
-- App: Haken und Tagesnotiz werden getrennt gespeichert. Die Notiz speichert nach kurzer Pause, beim
-  Verlassen des Feldes und beim Zuklappen, Aufträge je Tag nacheinander, und nur, wenn seit dem Laden
-  niemand anderes sie geändert hat (Versionsmarke `geaendert_am`); sonst wird neu geladen und der nicht
-  gespeicherte Text in der Meldung gezeigt. Fehlgeschlagener Haken springt auf den Stand der Datenbank
-  zurück. Ladefehler (Tage, Plan, Fassungen, Trainer) werden angezeigt statt verschluckt.
-  Neu: `src/lib/tagebuch.test.ts` (7 Fälle, Gegenprobe ohne Versionsprüfung schlägt an).
+- App: Haken und Tagesnotiz werden getrennt gespeichert. Die Notiz (`src/lib/notizEntwurf.ts`) speichert
+  nach kurzer Pause, beim Verlassen des Feldes und beim Zuklappen, nie zwei Aufträge gleichzeitig. Jeder
+  Entwurf merkt sich den Stand, auf dem er beruht, und speichert nur, wenn ihn seither niemand geändert
+  hat (Versionsmarke `geaendert_am`); bei einem Konflikt wird neu geladen und der neueste eigene Text in
+  der Meldung gezeigt; bei anderen Fehlern bleibt der Text im Feld und wird erneut gesendet. Der Haken
+  liefert den ganzen Stand zurück; verspätete ältere Antworten überschreiben keinen neueren Stand. Nach
+  dem Wechsel des Durchlaufs ist erst bearbeitbar, was geladen ist. Ladefehler (Tage, Plan, Fassungen,
+  Trainer) werden angezeigt statt verschluckt.
+- Dritter Blick (nur auf die Änderungen) fand drei Wege, auf denen Notiztext verloren gehen konnte
+  (Haken schob die Versionsmarke weiter; Netzfehler löschte den Entwurf; Konflikt verschluckte neueren
+  Text): behoben, siehe oben.
+- Neu: `src/lib/tagebuch.test.ts` (9 Fälle) und `src/lib/notizEntwurf.test.ts` (6 Fälle); 5 Gegenproben
+  (Versionsprüfung weg, Grundlage neu beim Tippen, Fehler verwirft Text, Konflikt nennt alten Text,
+  gleichzeitige Aufträge): alle erkannt. Insgesamt 49 Tests grün.
 - SPEC: Annahme zu Notizen präzisiert (Folien-Notizen privat, Tagesnotiz gemeinsam, OFFENE-FRAGEN Nr. 23);
   neu OFFENE-FRAGEN Nr. 24 (wer im gemeinsamen Durchlauf was sieht).
 - Probelauf (alles in einer Transaktion, zurückgerollt): Migration + neuer Test, Migration + jeder der vier

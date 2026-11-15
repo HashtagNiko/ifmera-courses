@@ -12,7 +12,14 @@ interface Zeile {
   geaendert_von: string | null
   geaendert_am: string
 }
-const db: { zeile: Zeile | null; zaehler: number; schreibversuche: number; vorSchreiben?: () => void } = {
+const db: {
+  zeile: Zeile | null
+  zaehler: number
+  schreibversuche: number
+  vorSchreiben?: () => void
+  /** Schreiben ohne Recht: Datenbank aendert 0 Zeilen, ohne Fehler (wie RLS) */
+  gesperrt?: boolean
+} = {
   zeile: null,
   zaehler: 0,
   schreibversuche: 0,
@@ -43,6 +50,7 @@ vi.mock('./supabase', () => ({
           db.zeile = { notiz: werte.notiz as string, vermittelt: false, geaendert_von: 'ich', geaendert_am: marke() }
           return { data: [{ geaendert_am: db.zeile.geaendert_am }], error: null }
         }
+        if (db.gesperrt) return { data: [], error: null }
         if (!db.zeile || ('geaendert_am' in filter && filter.geaendert_am !== db.zeile.geaendert_am)) return { data: [], error: null }
         db.zeile = { ...db.zeile, notiz: werte.notiz as string, geaendert_am: marke() }
         return { data: [{ geaendert_am: db.zeile.geaendert_am }], error: null }
@@ -67,6 +75,7 @@ beforeEach(() => {
   db.zaehler = 0
   db.schreibversuche = 0
   db.vorSchreiben = undefined
+  db.gesperrt = false
 })
 
 describe('notizSpeichern', () => {
@@ -117,6 +126,23 @@ describe('notizSpeichern', () => {
     const r = await notizSpeichern('dl', TAG, basis, 'meins')
     expect(r.gespeichert).toBe(true)
     expect(db.zeile).toMatchObject({ notiz: 'meins', vermittelt: true })
+  })
+
+  it('legt neu an, wenn die Zeile inzwischen gelöscht wurde', async () => {
+    andererSchreibt({ notiz: 'alt' })
+    const basis = { notiz: 'alt', stand_am: db.zeile!.geaendert_am }
+    db.zeile = null
+    const r = await notizSpeichern('dl', TAG, basis, 'meins')
+    expect(r.gespeichert).toBe(true)
+    expect(db.zeile?.notiz).toBe('meins')
+  })
+
+  it('meldet fehlendes Recht als Fehler, nicht als Konflikt', async () => {
+    andererSchreibt({ notiz: 'alt' })
+    const basis = { notiz: 'alt', stand_am: db.zeile!.geaendert_am }
+    db.gesperrt = true
+    await expect(notizSpeichern('dl', TAG, basis, 'meins')).rejects.toThrow(/Berechtigung/)
+    expect(db.zeile?.notiz).toBe('alt')
   })
 
   it('gibt nach drei Versuchen auf, wenn vor jedem Schreiben jemand abhakt, und überschreibt nichts', async () => {

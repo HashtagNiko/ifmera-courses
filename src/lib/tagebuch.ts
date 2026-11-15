@@ -217,23 +217,24 @@ export async function planFassungSetzen(durchlaufId: string, kurstagId: string, 
  * Setzt oder nimmt den Haken eines Tages. Gesendet wird nur der Haken: Arbeiten zwei Trainer gleichzeitig
  * im selben Durchlauf, überschreibt der Haken des einen nicht die Notiz des anderen. `titel_damals` wird
  * mitgeschrieben, damit ein abgeschlossener Durchlauf lesbar bleibt, auch wenn sich der Kurs später
- * ändert. Zeitpunkt und "wer" setzt die Datenbank. Rückgabe: neue Versionsmarke.
+ * ändert. Zeitpunkt und "wer" setzt die Datenbank. Rückgabe: der ganze Stand danach (Notiz und
+ * Versionsmarke passen so immer zusammen).
  */
 export async function hakenSetzen(
   durchlaufId: string,
   tag: Pick<TagebuchTag, 'id' | 'tagebuch_titel'>,
   vermittelt: boolean,
-): Promise<string | null> {
+): Promise<StandAufServer> {
   const { data, error } = await supabase
     .from('fortschritt')
     .upsert(
       { durchlauf_id: durchlaufId, kurstag_id: tag.id, vermittelt, titel_damals: tag.tagebuch_titel },
       { onConflict: 'durchlauf_id,kurstag_id' },
     )
-    .select('geaendert_am')
+    .select('vermittelt, notiz, geaendert_von, geaendert_am')
   if (error) throw new Error(error.message)
   if (!data?.length) throw new Error('Der Haken wurde nicht gespeichert.')
-  return (data[0].geaendert_am as string | null) ?? null
+  return standAus(data[0])
 }
 
 export type NotizErgebnis =
@@ -243,8 +244,9 @@ export type NotizErgebnis =
 /**
  * Speichert die Tagesnotiz nur, wenn sie seit `basis` niemand anderes geändert hat (im gemeinsamen
  * Durchlauf können zwei Trainer gleichzeitig schreiben). Hat inzwischen nur jemand abgehakt, die Notiz
- * aber nicht angefasst, wird mit dem neuen Stand erneut gespeichert. Sonst wird nichts überschrieben und
- * der aktuelle Stand zurückgegeben.
+ * aber nicht angefasst, wird mit dem neuen Stand erneut gespeichert. Hat jemand anderes die Notiz
+ * geändert, wird nichts überschrieben und der aktuelle Stand zurückgegeben (Konflikt). Fehlt das Recht
+ * (Zugang verloren, ausgetragen), gibt es einen Fehler statt eines Konflikts.
  */
 export async function notizSpeichern(
   durchlaufId: string,
@@ -258,7 +260,14 @@ export async function notizSpeichern(
     if (neu.geschrieben) return { gespeichert: true, stand_am: neu.stand_am }
     const aktuell = await standLaden(durchlaufId, tag.id)
     if (aktuell.notiz === text) return { gespeichert: true, stand_am: aktuell.stand_am }
-    if (aktuell.notiz !== basis.notiz || aktuell.stand_am === stand) return { gespeichert: false, aktuell }
+    if (aktuell.stand_am === null) {
+      // Keine Zeile sichtbar: beim Anlegen heißt das "kein Zugriff"; sonst wurde sie gelöscht, also neu anlegen
+      if (stand === null) throw new Error('kein Zugriff mehr auf diesen Durchlauf')
+      stand = null
+      continue
+    }
+    if (aktuell.stand_am === stand) throw new Error('keine Berechtigung mehr, diese Notiz zu ändern')
+    if (aktuell.notiz !== basis.notiz) return { gespeichert: false, aktuell }
     stand = aktuell.stand_am
   }
   return { gespeichert: false, aktuell: await standLaden(durchlaufId, tag.id) }

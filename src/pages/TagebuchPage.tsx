@@ -16,11 +16,13 @@ import {
   tageLaden,
   tagesBezeichnung,
   type Durchlauf,
+  type StandAufServer,
   type TagebuchTag,
 } from '../lib/tagebuch'
 import { fassungenFuerTage, kursZugangVon, type Fassung } from '../lib/fassungen'
 import { trainerLaden, type Trainer } from '../lib/trainer'
 import { useIch } from '../lib/TrainerContext'
+import { useNotizEntwurf, type NotizAnbindung } from '../lib/notizEntwurf'
 import Kopfzeile from '../components/Kopfzeile'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 
@@ -58,88 +60,69 @@ export default function TagebuchPage() {
   }, [kursId])
 
   // ---- Speichern von Haken und Tagesnotiz ----
-  // Letzter bekannter Stand je Durchlauf und Tag in der Datenbank: Grundlage, um beim Speichern der Notiz
-  // zu erkennen, ob jemand anderes sie inzwischen geändert hat (gemeinsamer Durchlauf).
-  const serverStand = useRef(new Map<string, { notiz: string; stand_am: string | null }>())
-  // Speichern je Tag nacheinander, nie gleichzeitig (sonst kämen Anfragen in falscher Reihenfolge an)
-  const ketten = useRef(new Map<string, Promise<void>>())
-  // Zähler je Tag: steigt bei einem Konflikt; danach verworfene ältere Speicheraufträge
-  const konflikte = useRef(new Map<string, number>())
-  const [zurueckgesetzt, setZurueckgesetzt] = useState<Map<string, number>>(new Map())
+  // Jeder Tag in `tage` ist ein in sich stimmiger Stand aus der Datenbank (Notiz und Versionsmarke passen
+  // zusammen). Den Entwurf einer Notiz verwaltet die Zeile selbst (useNotizEntwurf), samt dem Stand, auf
+  // dem er beruht; so überschreibt er nie, was ein anderer inzwischen geschrieben hat.
+  const [geladenFuer, setGeladenFuer] = useState<string | null>(null)
   const aktuellerDurchlauf = useRef(durchlaufId)
   useEffect(() => {
     aktuellerDurchlauf.current = durchlaufId
   }, [durchlaufId])
-
-  const tageUebernehmen = useCallback((dlId: string | null, neu: TagebuchTag[]) => {
-    if (dlId) for (const t of neu) serverStand.current.set(`${dlId}:${t.id}`, { notiz: t.notiz, stand_am: t.stand_am })
-    if (dlId === aktuellerDurchlauf.current) setTage(neu)
-  }, [])
+  // Haken je Tag nacheinander senden (zwei schnelle Klicks kämen sonst womöglich vertauscht an)
+  const hakenKetten = useRef(new Map<string, Promise<void>>())
 
   useEffect(() => {
     if (!kursId) return
     tageLaden(kursId, durchlaufId)
-      .then((neu) => tageUebernehmen(durchlaufId, neu))
+      .then((neu) => {
+        if (durchlaufId !== aktuellerDurchlauf.current) return
+        setTage(neu)
+        setGeladenFuer(durchlaufId)
+      })
       .catch((e: Error) => setFehler(e.message))
-  }, [kursId, durchlaufId, tageUebernehmen])
+  }, [kursId, durchlaufId])
 
-  function einreihen(schluessel: string, schritt: () => Promise<void>): Promise<void> {
-    const jetzt = (ketten.current.get(schluessel) ?? Promise.resolve()).then(schritt).catch((e: Error) => setFehler(e.message))
-    ketten.current.set(schluessel, jetzt)
-    return jetzt
-  }
-
-  function tagAktualisieren(dlId: string, tagId: string, felder: Partial<TagebuchTag>) {
-    if (dlId === aktuellerDurchlauf.current) setTage((v) => v.map((t) => (t.id === tagId ? { ...t, ...felder } : t)))
+  function standUebernehmen(dlId: string, tagId: string, stand: Partial<StandAufServer>) {
+    if (dlId !== aktuellerDurchlauf.current) return
+    setTage((v) =>
+      v.map((t) => {
+        if (t.id !== tagId) return t
+        // Eine verspätete ältere Antwort überschreibt keinen neueren Stand (Zeitstempel im selben Format)
+        if (stand.stand_am && t.stand_am && stand.stand_am < t.stand_am) return t
+        return { ...t, ...stand }
+      }),
+    )
   }
 
   function haken(tag: TagebuchTag, vermittelt: boolean) {
     if (!durchlaufId) return
     const dl = durchlaufId
     const schluessel = `${dl}:${tag.id}`
-    tagAktualisieren(dl, tag.id, { vermittelt, geaendert_von: ich.id })
-    void einreihen(schluessel, async () => {
+    if (dl === aktuellerDurchlauf.current) {
+      setTage((v) => v.map((t) => (t.id === tag.id ? { ...t, vermittelt, geaendert_von: ich.id } : t)))
+    }
+    const jetzt = (hakenKetten.current.get(schluessel) ?? Promise.resolve()).then(async () => {
       try {
-        const stand_am = await hakenSetzen(dl, tag, vermittelt)
-        const s = serverStand.current.get(schluessel)
-        serverStand.current.set(schluessel, { notiz: s?.notiz ?? '', stand_am })
-        tagAktualisieren(dl, tag.id, { stand_am })
+        // Antwort ist der ganze Stand des Tages; Notiz und Versionsmarke bleiben so zusammen stimmig
+        standUebernehmen(dl, tag.id, await hakenSetzen(dl, tag, vermittelt))
       } catch (e) {
-        // Anzeige zurück auf den Stand der Datenbank
         const aktuell = await standLaden(dl, tag.id).catch(() => null)
-        if (aktuell) {
-          serverStand.current.set(schluessel, { notiz: aktuell.notiz, stand_am: aktuell.stand_am })
-          tagAktualisieren(dl, tag.id, { vermittelt: aktuell.vermittelt, geaendert_von: aktuell.geaendert_von, stand_am: aktuell.stand_am })
-        }
-        throw new Error(`Der Haken wurde nicht gespeichert: ${(e as Error).message}`)
+        if (aktuell) standUebernehmen(dl, tag.id, aktuell)
+        setFehler(`Der Haken wurde nicht gespeichert: ${(e as Error).message}`)
       }
     })
+    hakenKetten.current.set(schluessel, jetzt)
   }
 
-  /** Speichert die Tagesnotiz, ohne die Änderung eines anderen Trainers zu überschreiben. */
-  function notiz(dl: string, tag: TagebuchTag, text: string): Promise<void> {
-    const schluessel = `${dl}:${tag.id}`
-    const runde = konflikte.current.get(schluessel) ?? 0
-    return einreihen(schluessel, async () => {
-      if ((konflikte.current.get(schluessel) ?? 0) !== runde) return // nach einem Konflikt verworfen
-      const basis = serverStand.current.get(schluessel) ?? { notiz: '', stand_am: null }
-      if (basis.notiz === text) return
-      const ergebnis = await notizSpeichern(dl, tag, basis, text)
-      if (ergebnis.gespeichert) {
-        serverStand.current.set(schluessel, { notiz: text, stand_am: ergebnis.stand_am })
-        tagAktualisieren(dl, tag.id, { notiz: text, stand_am: ergebnis.stand_am })
-        return
-      }
-      const a = ergebnis.aktuell
-      konflikte.current.set(schluessel, runde + 1)
-      serverStand.current.set(schluessel, { notiz: a.notiz, stand_am: a.stand_am })
-      tagAktualisieren(dl, tag.id, { notiz: a.notiz, vermittelt: a.vermittelt, geaendert_von: a.geaendert_von, stand_am: a.stand_am })
-      if (dl === aktuellerDurchlauf.current) setZurueckgesetzt((m) => new Map(m).set(tag.id, (m.get(tag.id) ?? 0) + 1))
-      setFehler(
-        `Die Notiz zu „${tag.tagebuch_titel ?? tagesBezeichnung(tag)}“ hat inzwischen jemand anderes geändert. ` +
-          `Sie wurde neu geladen. Dein Text wurde nicht gespeichert: „${text}“`,
-      )
-    })
+  function notizHinweis(tag: TagebuchTag, art: 'konflikt' | 'fehler', text: string, meldung?: string) {
+    const titel = tag.tagebuch_titel ?? tagesBezeichnung(tag)
+    setFehler(
+      art === 'konflikt'
+        ? `Die Notiz zu „${titel}“ hat inzwischen jemand anderes geändert. Sie wurde neu geladen. ` +
+            `Dein Text wurde nicht gespeichert: „${text}“`
+        : `Die Notiz zu „${titel}“ wurde nicht gespeichert (${meldung ?? 'Fehler'}). Dein Text steht noch im ` +
+            `Feld und wird beim Verlassen des Feldes erneut gesendet.`,
+    )
   }
 
   // ---- Gemeinsamer Durchlauf (Baustein 5): Team, Plan, Fassungen ----
@@ -203,7 +186,8 @@ export default function TagebuchPage() {
     setFehler(null)
     try {
       await schritt()
-      tageUebernehmen(durchlaufId, await tageLaden(kursId, durchlaufId))
+      const neu = await tageLaden(kursId, durchlaufId)
+      if (durchlaufId === aktuellerDurchlauf.current) setTage(neu)
       await teamLaden()
     } catch (e) {
       setFehler((e as Error).message)
@@ -325,10 +309,11 @@ export default function TagebuchPage() {
             <Tageszeile
               key={`${durchlaufId ?? '-'}:${tag.id}`}
               tag={tag}
-              bearbeitbar={Boolean(durchlaufId)}
+              bearbeitbar={Boolean(durchlaufId) && geladenFuer === durchlaufId}
               haken={(v) => haken(tag, v)}
-              notizSichern={(text) => (durchlaufId ? notiz(durchlaufId, tag, text) : Promise.resolve())}
-              zurueckgesetzt={zurueckgesetzt.get(tag.id) ?? 0}
+              notizSpeichern={(basis, text) => notizSpeichern(durchlaufId ?? '', tag, basis, text)}
+              notizUebernehmen={(stand) => durchlaufId && standUebernehmen(durchlaufId, tag.id, stand)}
+              notizHinweis={(art, text, meldung) => notizHinweis(tag, art, text, meldung)}
               plan={
                 durchlauf && team.length > 1
                   ? {
@@ -368,82 +353,31 @@ interface PlanAngaben {
   fassungSetzen: (fassungId: string | null) => void
 }
 
-/**
- * Entwurf der Tagesnotiz: Tippen ändert nur das Feld; gespeichert wird nach einer kurzen Pause, beim
- * Verlassen des Feldes und beim Schließen der Zeile. Nach einem Konflikt (jemand anderes hat die Notiz
- * geändert) wird der Entwurf verworfen und der Stand der Datenbank gezeigt.
- */
-function useNotizEntwurf(gespeichert: string, sichern: (text: string) => Promise<void>, zurueckgesetzt: number) {
-  const [entwurf, setEntwurf] = useState<string | null>(null)
-  const ausstehend = useRef<string | null>(null)
-  const uhr = useRef<number | undefined>(undefined)
-  const sichernRef = useRef(sichern)
-  useEffect(() => {
-    sichernRef.current = sichern
-  }, [sichern])
-
-  const jetztSichern = useCallback(() => {
-    window.clearTimeout(uhr.current)
-    uhr.current = undefined
-    const text = ausstehend.current
-    if (text === null) return
-    ausstehend.current = null
-    void sichernRef.current(text).finally(() => {
-      // Ohne neuere Eingabe zeigt das Feld wieder den gespeicherten Stand
-      if (ausstehend.current === null) setEntwurf(null)
-    })
-  }, [])
-
-  function tippen(text: string) {
-    setEntwurf(text)
-    ausstehend.current = text
-    window.clearTimeout(uhr.current)
-    uhr.current = window.setTimeout(jetztSichern, 800)
-  }
-
-  // Konflikt: Entwurf verwerfen (der nicht gespeicherte Text steht in der Fehlermeldung)
-  useEffect(() => {
-    if (zurueckgesetzt === 0) return
-    window.clearTimeout(uhr.current)
-    ausstehend.current = null
-    setEntwurf(null)
-  }, [zurueckgesetzt])
-
-  // Beim Verlassen der Seite warnen, beim Schließen der Zeile noch speichern
-  useEffect(() => {
-    const warnen = (e: BeforeUnloadEvent) => {
-      if (ausstehend.current !== null) e.preventDefault()
-    }
-    window.addEventListener('beforeunload', warnen)
-    return () => {
-      window.removeEventListener('beforeunload', warnen)
-      jetztSichern()
-    }
-  }, [jetztSichern])
-
-  return { wert: entwurf ?? gespeichert, tippen, verlassen: jetztSichern }
-}
-
 function Tageszeile({
   tag,
   bearbeitbar,
   haken,
-  notizSichern,
-  zurueckgesetzt,
+  notizSpeichern,
+  notizUebernehmen,
+  notizHinweis,
   plan,
 }: {
   tag: TagebuchTag
   bearbeitbar: boolean
   haken: (vermittelt: boolean) => void
-  notizSichern: (text: string) => Promise<void>
-  /** steigt, wenn die Notiz wegen eines Konflikts neu geladen wurde */
-  zurueckgesetzt: number
+  notizSpeichern: NotizAnbindung['speichern']
+  notizUebernehmen: NotizAnbindung['uebernehmen']
+  notizHinweis: NotizAnbindung['hinweis']
   /** nur bei gemeinsamen Durchläufen (mehr als ein Trainer) */
   plan: PlanAngaben | null
 }) {
   const [offen, setOffen] = useState(false)
   const [kopiert, setKopiert] = useState(false)
-  const notizFeld = useNotizEntwurf(tag.notiz, notizSichern, zurueckgesetzt)
+  const notizFeld = useNotizEntwurf(tag, {
+    speichern: notizSpeichern,
+    uebernehmen: notizUebernehmen,
+    hinweis: notizHinweis,
+  })
   const text = kopiertext(tag)
 
   async function kopieren() {
