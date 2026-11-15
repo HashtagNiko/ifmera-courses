@@ -14,3 +14,14 @@ export function useIch(): Trainer {
   if (!ich) throw new Error('useIch muss innerhalb des Trainer-Bereichs stehen')
   return ich
 }
+
+/**
+ * Ändert das geladene Profil, ohne neu zu laden (Baustein 8: neuer Anzeigename wirkt sofort).
+ * Gesetzt von `ProtectedRoute`.
+ */
+export const ProfilAktualisierenContext = createContext<(neu: Partial<Trainer>) => void>(() => undefined)
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useProfilAktualisieren(): (neu: Partial<Trainer>) => void {
+  return useContext(ProfilAktualisierenContext)
+}

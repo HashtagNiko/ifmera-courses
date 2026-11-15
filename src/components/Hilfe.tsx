@@ -9,8 +9,8 @@ import { NOTIZEN_MODI, STUFEN } from '../lib/trainer'
  * Anleitung oder die Hilfe einmal öffnet (nur in diesem Browser gemerkt).
  */
 
-export type HilfeSeite = 'kurstage' | 'tagebuch' | 'freigaben' | 'notizen' | 'fassungen'
-export const SEITEN: HilfeSeite[] = ['kurstage', 'tagebuch', 'freigaben', 'notizen', 'fassungen']
+export type HilfeSeite = 'kurstage' | 'tagebuch' | 'freigaben' | 'notizen' | 'fassungen' | 'profil'
+export const SEITEN: HilfeSeite[] = ['kurstage', 'tagebuch', 'freigaben', 'notizen', 'fassungen', 'profil']
 
 /** Welche Hilfe passt zur Adresse? „/fassungen/123“ → „fassungen“ */
 export function seiteAus(pfad: string): HilfeSeite | null {
@@ -158,6 +158,7 @@ export const SEITENTITEL: Record<HilfeSeite, string> = {
   freigaben: 'Freigaben',
   notizen: 'Eigene Notizen',
   fassungen: 'Eigene Fassungen',
+  profil: 'Profil',
 }
 
 export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
@@ -279,6 +280,19 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
         übernehmen lassen, „Neue Version hochladen“, dann „Ist erledigt, …“.
       </li>
       <li>„Löschen“ entfernt die Fassung samt Dateien endgültig.</li>
+    </Liste>
+  ),
+  profil: (
+    <Liste>
+      <li>
+        <b>Name:</b> So sehen dich andere Trainer, und so steht dein Name in der Fußzeile fremder Decks, die du
+        öffnest oder herunterlädst. „Name speichern“ wirkt sofort.
+      </li>
+      <li>
+        <b>Passwort:</b> bisheriges Passwort eingeben, das neue zweimal, dann „Passwort ändern“. Es gilt auch für
+        das Prüfungstool, weil beide dieselbe Anmeldung nutzen.
+      </li>
+      <li>Oben rechts kommst du über „Profil“ jederzeit hierher.</li>
     </Liste>
   ),
 }

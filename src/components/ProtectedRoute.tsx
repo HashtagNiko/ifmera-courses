@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { eigenesProfilLaden, type Trainer } from '../lib/trainer'
-import { TrainerContext } from '../lib/TrainerContext'
+import { ProfilAktualisierenContext, TrainerContext } from '../lib/TrainerContext'
 
 /**
  * Schützt den Trainer-Bereich zweifach: ohne Sitzung geht es auf /login, und
@@ -16,6 +16,7 @@ export default function ProtectedRoute() {
   // undefined = lädt noch, null = kein Profil
   const [profil, setProfil] = useState<Trainer | null | undefined>(undefined)
   const [fehler, setFehler] = useState<string | null>(null)
+  const aktualisieren = useCallback((neu: Partial<Trainer>) => setProfil((p) => (p ? { ...p, ...neu } : p)), [])
 
   useEffect(() => {
     if (!session) {
@@ -65,7 +66,9 @@ export default function ProtectedRoute() {
 
   return (
     <TrainerContext.Provider value={profil}>
-      <Outlet />
+      <ProfilAktualisierenContext.Provider value={aktualisieren}>
+        <Outlet />
+      </ProfilAktualisierenContext.Provider>
     </TrainerContext.Provider>
   )
 }

@@ -2,6 +2,24 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Baustein 8 · Profil (Name und Passwort)
+
+- Migration `20261115120000_kt_profil.sql` (hinzufügend, nach Sicherung eingespielt): Funktion
+  `kt_anzeigename_setzen` ändert nur den eigenen Anzeigenamen aktiver Trainer; `kt_trainer` bleibt sonst nur
+  lesbar. Prüfung: 2–60 Zeichen, mindestens ein Buchstabe, keine Steuer-, unsichtbaren oder
+  richtungsdrehenden Zeichen, keine spitzen Klammern, kein Name eines anderen Trainers (auch nicht in
+  anderer Groß-/Kleinschreibung). Zweiter Blick vorher: kein Blocker; umgesetzt: unsichtbare Zeichen,
+  doppelte Namen (sonst könnte sich jemand in der Freigaben-Auswahl als anderer Trainer ausgeben),
+  `[[:space:]]`, „nicht gespeichert“ statt stillem Erfolg, Selbstprüfung auch auf Spaltenrechte und
+  Regelzahl. Test `20261115120000_kt_profil_test.sql` (P00–P13); Gegenproben (ohne Trainer-Prüfung → P10,
+  ohne Doppelnamen-Prüfung → P06f). Rückbau im Probelauf: Stand identisch. Rechte-Tests danach 8/8.
+- App: Seite „Profil“ (`/profil`, Link oben rechts): Name ändern (wirkt sofort, ohne Neuladen) und
+  Passwort ändern (bisheriges Passwort wird erst geprüft, neues mindestens 10 Zeichen, zweimal). Hinweis,
+  dass das Passwort auch für das Prüfungstool gilt. Hilfe und Anleitung um die Seite ergänzt.
+- Namenstausch in fremden Decks liest den Namen jetzt aus der Fußzeile des Decks (`deckAnpassung.ts`),
+  damit er greift, auch wenn der Besitzer seinen Anzeigenamen ändert. Neue Tests: `profil.test.ts` (4,
+  Gegenprobe: ohne Prüfung des bisherigen Passworts schlägt an), Fußzeile (1). 94 Tests grün.
+
 ## 2026-11-15 · Baustein 7 · Notizen nur als Stichpunkte (eingespielt)
 
 - **Teil 2 eingespielt nach Nikos „ja“** (gelb), vorher zweiter Blick auf Teil 2 und den Code. Er fand

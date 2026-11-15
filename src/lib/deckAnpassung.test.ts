@@ -25,6 +25,14 @@ describe('fussNameErsetzen', () => {
     expect(fussNameErsetzen(DECK, 'Herr Krnic', 'Herr Krnic')).toBe(DECK)
   })
 
+  it('greift auch, wenn der Besitzer seinen Namen im Tool geändert hat (Name steht im Deck)', () => {
+    const neu = fussNameErsetzen(DECK, 'Niko Krnic', 'Herr Muster')
+    expect(neu.match(/© ifmera academy GmbH \| Herr Muster/g)).toHaveLength(2)
+    expect(neu).toContain('Ihr Trainer: Herr Krnic')
+    // der Betrachter heißt so wie im Deck: nichts zu tun
+    expect(fussNameErsetzen(DECK, 'Niko Krnic', 'Herr Krnic')).toBe(DECK)
+  })
+
   it('maskiert den neuen Namen, damit er kein HTML einschleust', () => {
     const neu = fussNameErsetzen(DECK, 'Herr Krnic', '<script>x</script>')
     expect(neu).not.toContain('<script>x</script>')

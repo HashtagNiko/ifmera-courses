@@ -262,6 +262,22 @@ nach App oder VS Code.
 Test-Trainer: Kachel zeigt „Notizen als Stichpunkte“, im Cockpit stehen Stichpunkte, der Trainer-Download
 enthält nur Stichpunkte. Als Niko: Cockpit zeigt weiter die ausführlichen Notizen.
 
+### Baustein 8 – Profil (Nikos Wunsch, 15.11.2026)
+
+- Seite **„Profil“** (Link oben rechts): eigenen **Anzeigenamen** ändern (2–60 Zeichen, keine spitzen
+  Klammern; wirkt sofort) und eigenes **Passwort** ändern (bisheriges Passwort, neues zweimal, mindestens
+  10 Zeichen).
+- Den Namen ändert nur die Datenbankfunktion `kt_anzeigename_setzen`, und nur den eigenen; `kt_trainer`
+  bleibt für Trainer sonst nur lesbar.
+- Das Passwort gehört zur gemeinsamen Anmeldung mit dem Prüfungstool und gilt dort mit.
+- Der Namenstausch in fremden Decks liest den Namen jetzt aus der Fußzeile des Decks, damit er auch greift,
+  wenn der Besitzer seinen Anzeigenamen ändert.
+- **Annahme (Claude):** kein „Passwort vergessen“ per Mail (bräuchte Mail-Einstellungen im Dashboard, rot);
+  wer sein Passwort vergisst, bekommt von Niko im Dashboard ein neues.
+
+**Laien-Test:** Als Test-Trainer „Profil“ öffnen, Namen ändern: oben rechts steht sofort der neue Name.
+Passwort ändern, abmelden, mit dem neuen Passwort anmelden.
+
 ---
 
 ## 5. Nicht im Umfang

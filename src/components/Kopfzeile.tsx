@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useIch } from '../lib/TrainerContext'
 import HilfeKnopf from './Hilfe'
@@ -28,6 +28,9 @@ export default function Kopfzeile({ titel }: { titel: string }) {
 
         <HilfeKnopf />
 
+        <Link to="/profil" className="text-sm text-ifm-gray hover:text-ifm-blue" title="Name und Passwort ändern">
+          Profil
+        </Link>
         <button onClick={signOut} className="text-sm text-ifm-gray hover:text-ifm-blue">
           Abmelden
         </button>
