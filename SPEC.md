@@ -278,6 +278,23 @@ enthält nur Stichpunkte. Als Niko: Cockpit zeigt weiter die ausführlichen Noti
 **Laien-Test:** Als Test-Trainer „Profil“ öffnen, Namen ändern: oben rechts steht sofort der neue Name.
 Passwort ändern, abmelden, mit dem neuen Passwort anmelden.
 
+### Baustein 9 – Teilnehmerfassung und PDF zu Fassungen, Ablage (Nikos Wunsch, 15.11.2026)
+
+- **Teilnehmerfassung aus dem Tool:** bei jeder Fassung „Teilnehmer herunterladen“. Das Tool macht sie im
+  Browser genauso wie Nikos `engine/teilnehmer.py` (Trainertexte und Cockpit-Knöpfe weg, Wischnavigation
+  dazu); ein Test vergleicht das Ergebnis Byte für Byte mit allen 44 fertigen Teilnehmerfassungen.
+- **PDF über das Quellpaket:** Ins Paket kommen Nikos `teilnehmer.py` und `pdf.py` und ein Startprogramm
+  `engine/pdf_fassung.py`; Claude erzeugt damit im Paketordner Teilnehmerfassung und PDF (einmalig
+  Playwright und PyMuPDF installieren). Im Browser des Tools ließe sich das PDF nicht in derselben Qualität
+  erzeugen, und fremde Decks dürfen im Tool nicht laufen. Die PDF gibt der Trainer selbst weiter.
+- **Name in der Fußzeile:** In jeder Fassung, die jemand öffnet oder herunterlädt, steht sein eigener Name
+  (wie bei fremden Kursdecks seit Baustein 2).
+- **Ablage:** Anleitung im Tool, Einrichtungs-Datei und Paket-Anleitung (`CLAUDE.md`) beschreiben dieselbe
+  Ordnung: ein Ordner je Kurs, darin je Kurstag ein Arbeitsordner; gesichert wird im Tool.
+
+**Laien-Test:** Als Test-Trainer bei einer Fassung „Teilnehmer herunterladen“: Datei öffnet sich ohne
+Cockpit-Knopf, mit dem eigenen Namen in der Fußzeile.
+
 ---
 
 ## 5. Nicht im Umfang

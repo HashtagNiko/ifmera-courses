@@ -215,7 +215,8 @@ export async function dateiHerunterladen(
 ): Promise<void> {
   // Nur HTML wird angepasst; PDF und Zip kommen unverändert
   const istHtml = dateiname.endsWith('.html')
-  const notizen = istHtml ? notizenHolen(kurstagId) : Promise.resolve([])
+  // In eine Teilnehmerfassung gehören nie Trainernotizen, auch keine eigenen
+  const notizen = istHtml && !anpassung?.teilnehmer ? notizenHolen(kurstagId) : Promise.resolve([])
   const antwort = await ausDemBucket(pfad, bucket)
   // Supabase liefert HTML als text/plain aus; der Typ richtet sich deshalb nach der Endung.
   const inhalt = istHtml

@@ -118,6 +118,7 @@ describe('Beschriftungen in Hilfe und Anleitung gibt es im Tool wirklich', () =>
     'nur Stichpunkte',
     'Name speichern',
     'Passwort ändern',
+    'Teilnehmer herunterladen',
   ]
 
   for (const b of beschriftungen) {

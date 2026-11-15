@@ -14,6 +14,8 @@
 | `build.json` | Bauplan: welche Folienquellen, welche Bilder, wohin das Ergebnis kommt |
 | `engine/deck_engine.html` | Gestaltung, Steuerung und Trainer-Cockpit der Decks |
 | `engine/build.py` | baut aus allem ein einzelnes HTML-Deck |
+| `engine/teilnehmer.py`, `engine/pdf.py` | Teilnehmerfassung und PDF (Programme des Kursautors, falls dabei) |
+| `engine/pdf_fassung.py` | ruft beide für dieses Paket auf (siehe „Teilnehmerfassung und PDF“) |
 | `KURSREGELN.md` | Gestaltungsregeln des Kurses (falls vorhanden) – **zuerst lesen** |
 
 ## Bauen
@@ -26,6 +28,37 @@ python engine/build.py .
 
 Das fertige Deck liegt danach in `dist/` (Dateiname wie im Bauplan). Es läuft offline in jedem
 Browser; der Knopf „Trainer-Cockpit öffnen“ zeigt Notizen und Aktionen.
+
+## Teilnehmerfassung und PDF
+
+- **Teilnehmerfassung** (ohne Notizen und Cockpit, für die Teilnehmer): am einfachsten im Kurs-Tool,
+  nachdem die Fassung hochgeladen ist: bei der Fassung „Teilnehmer herunterladen“.
+- **PDF**: nach dem Bauen im Paketordner `python engine/pdf_fassung.py .` ausführen. Es legt
+  `dist/teilnehmer/<Deck>.html` und `dist/teilnehmer/pdf/<Deck>.pdf` an. Dafür einmalig nötig:
+  `pip install playwright pymupdf` und `python -m playwright install chromium`. Kannst du keine
+  Programme installieren oder ausführen (Chat ohne Code-Ausführung), sag das dem Trainer: Dann erzeugt
+  er das PDF am eigenen Rechner (Claude Code oder Python), die Teilnehmerfassung bekommt er im Tool.
+- Die PDF gibt der Trainer seinen Teilnehmern selbst weiter; ins Kurs-Tool wird sie nicht hochgeladen.
+
+## Ablage und Ablauf beim Trainer
+
+Damit nichts verloren geht und keine alten Stände durcheinanderkommen:
+
+1. **Ein Ordner je Kurs, darin ein Ordner je Kurstag**, zum Beispiel
+   `Dokumente\ifmera-Fassungen\H&G-Kurs\Tag8_Segment3\`. Der Kurstag-Ordner ist dieses entpackte Paket
+   (Name wie im Zip). Je Kurstag gibt es nur **einen** Arbeitsordner, keine Kopien daneben.
+2. **Arbeiten** nur in diesem Ordner: ändern, `python engine/build.py .`, im Browser prüfen.
+3. **Sichern** heißt: im Kurs-Tool hochladen (erste Version „Neue Fassung hochladen“, danach bei der
+   Fassung „Neue Version hochladen“), jeweils das Deck aus `dist/` und den ganzen Ordner als Zip. Das
+   Tool hält immer den letzten hochgeladenen Stand; der Ordner auf dem Rechner ist die Werkbank.
+4. **Neuer Stand vom Kursautor** (das Tool zeigt bei der Fassung einen gelben Hinweis): das neue
+   Quellpaket in einen zweiten Ordner daneben entpacken (`…_neu`), die Änderungen von dort in den
+   Arbeitsordner übernehmen, bauen, hochladen, dann `…_neu` löschen und im Tool „Ist erledigt“ klicken.
+5. **Teilnehmerfassung und PDF** erst, wenn die Fassung fertig ist (siehe oben).
+6. Heruntergeladene Zips können nach dem Entpacken gelöscht werden.
+
+Wenn du (Claude) mit dem Trainer arbeitest: Halte dich an diese Ordnung, schlage keine Kopien vor, und
+erinnere am Ende an das Hochladen im Tool.
 
 ## Regeln für Änderungen
 

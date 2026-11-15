@@ -44,7 +44,30 @@ export default function AnleitungPage() {
               den ganzen Ordner als Zip, dann „Fassung hochladen“.
             </li>
             <li>Wer die Fassung sehen soll, gibst du dort unter „Freigegeben für“ frei.</li>
+            <li>
+              Für die Teilnehmer: bei der Fassung „Teilnehmer herunterladen“ (HTML ohne Notizen und Cockpit, mit
+              deinem Namen in der Fußzeile). Das PDF macht Claude im Paketordner mit{' '}
+              <code>python engine/pdf_fassung.py .</code>; das gibst du deinen Teilnehmern selbst weiter.
+            </li>
           </ol>
+
+          <h3 className="mt-5 font-bold">So legst du die Dateien ab</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>
+              Ein Hauptordner, zum Beispiel <code>Dokumente\ifmera-Fassungen</code>, darin ein Ordner je Kurs und darin
+              je Kurstag das entpackte Quellpaket (Name wie im Zip, etwa <code>Tag8_Segment3</code>).
+            </li>
+            <li>Je Kurstag nur ein Arbeitsordner, keine Kopien daneben. Dort arbeitet Claude mit dir.</li>
+            <li>
+              Gesichert wird im Tool: Nach jeder fertigen Änderung hochladen („Neue Version hochladen“). Das Tool hält
+              den letzten Stand, der Ordner auf deinem Rechner ist die Werkbank.
+            </li>
+            <li>
+              Zeigt eine Fassung den gelben Hinweis „Grundlage geändert“: neues Quellpaket in einen zweiten Ordner
+              daneben entpacken, Claude die Änderungen übernehmen lassen, hochladen, den zweiten Ordner löschen.
+            </li>
+            <li>Claude kennt diese Ordnung: Sie steht auch in der Anleitung in jedem Quellpaket.</li>
+          </ul>
 
           <h3 className="mt-5 font-bold">Dateien</h3>
           <div className="mt-2 space-y-3">
