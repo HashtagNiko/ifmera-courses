@@ -25,6 +25,7 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
 - `src/lib/folien.engine.test.ts`: verlangt jetzt, dass die echte Engine nicht mehr abbricht (vorher hielt
   der Test den Fehler fest); Gegenprobe mit dem alten Deck aus der Sicherung schlägt an. 49 Tests grün.
 - Google Drive nicht angefasst (Nikos Schritt).
+- Nikos Laien-Test (Stand-Datum auf der Kachel, Cockpit beim Blättern, Knopf „Präsentieren“): bestanden.
 
 ## 2026-11-15 · Bausteine 2–5 · Gesamttest bestanden, Testdaten entfernt
 
