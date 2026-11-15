@@ -22,7 +22,9 @@ select json_build_object(
     'kt_kurs_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_kurs_freigaben t),
     'kt_folien_notizen', (select coalesce(json_agg(t), '[]') from public.kt_folien_notizen t),
     'kt_deck_fassungen', (select coalesce(json_agg(t), '[]') from public.kt_deck_fassungen t),
-    'kt_fassung_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_fassung_freigaben t)
+    'kt_fassung_freigaben', (select coalesce(json_agg(t), '[]') from public.kt_fassung_freigaben t),
+    'kt_durchlauf_trainer', (select coalesce(json_agg(t), '[]') from public.kt_durchlauf_trainer t),
+    'kt_durchlauf_tage', (select coalesce(json_agg(t), '[]') from public.kt_durchlauf_tage t)
   ),
   'policies', (
     select json_agg(p order by p.schemaname, p.tablename, p.policyname)
@@ -43,6 +45,18 @@ select json_build_object(
     where g.table_schema = 'public'
       and (g.table_name in ('kurse', 'kurstage', 'durchlaeufe', 'fortschritt')
            or g.table_name like 'kt\_%')
+  ),
+  -- Spaltenrechte (seit Baustein 4/5 vergeben einige Tabellen Rechte nur auf einzelne Spalten)
+  'spaltenrechte', (
+    select json_agg(json_build_object('tabelle', c.relname, 'spalte', a.attname, 'acl', a.attacl::text) order by c.relname, a.attname)
+    from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and a.attacl is not null
+      and (c.relname in ('kurse', 'kurstage', 'durchlaeufe', 'fortschritt') or c.relname like 'kt\_%')
+  ),
+  'trigger', (
+    select json_agg(json_build_object('tabelle', t.tgrelid::regclass::text, 'name', t.tgname, 'definition', pg_get_triggerdef(t.oid)) order by t.tgname)
+    from pg_trigger t
+    where not t.tgisinternal and t.tgname like 'kt\_%'
   ),
   'bucket_dateien', (
     select json_agg(json_build_object('name', o.name, 'groesse', o.metadata->>'size', 'geaendert', o.updated_at) order by o.name)

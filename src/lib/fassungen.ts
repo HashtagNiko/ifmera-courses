@@ -76,6 +76,14 @@ export async function fassungenLaden(kurstagId: string): Promise<Fassung[]> {
   return (data ?? []) as Fassung[]
 }
 
+/** Alle sichtbaren Fassungen zu mehreren Kurstagen (für den Plan im Tagebuch). */
+export async function fassungenFuerTage(kurstagIds: string[]): Promise<Fassung[]> {
+  if (kurstagIds.length === 0) return []
+  const { data, error } = await supabase.from('kt_deck_fassungen').select(SPALTEN).in('kurstag_id', kurstagIds)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Fassung[]
+}
+
 /** Zu welchen dieser Kurstage es sichtbare Fassungen gibt (für die Kacheln). */
 export async function fassungenZaehlen(kurstagIds: string[]): Promise<Map<string, number>> {
   if (kurstagIds.length === 0) return new Map()

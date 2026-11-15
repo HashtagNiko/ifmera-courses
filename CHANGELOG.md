@@ -2,6 +2,59 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Baustein 5 · Gemeinsamer Durchlauf (eingespielt; vorbereitet ab 13.11.)
+
+- **Eingespielt am 15.11.2026 nach Nikos „ja“** (gelber Schritt, inkl. OFFENE-FRAGEN Nr. 23): Sicherung
+  `backup/2026-11-15_vor_baustein5.json` und Migration in einem Befehl; Selbstprüfung KT-G00–G12 bestanden;
+  danach alle 5 Rechte-Tests live grün; lesend geprüft: anon ohne Rechte auf Tabellen und Funktionen des
+  Kurs-Tools, alle `kt_`-Tabellen mit RLS, Regeln und drei Trigger wie erwartet, `kt_migrationen` stimmt mit
+  dem Repo überein. Erst danach App nach `main`. Ehrlich vermerkt: Der erste Anlauf brach vor der Migration
+  ab, weil meine eigene Prüfung der Sicherungsdatei einen falschen Schlüssel las; die Kette hat wie gewollt
+  gestoppt, die Datenbank blieb unverändert.
+- `supabase/sicherung.sql`: neue Tabellen `kt_durchlauf_trainer`, `kt_durchlauf_tage`; neu auch
+  Spaltenrechte und Trigger des Kurs-Tools.
+- Migration `20261113220000_kt_gemeinsamer_durchlauf.sql` (**ersetzt Regeln, gelb**): Mitwirkende
+  (`kt_durchlauf_trainer`), Plan (`kt_durchlauf_tage`: Kurstag → Trainer + eigene Fassung),
+  `fortschritt.geaendert_von` per Trigger; Regeln für Durchläufe und Haken um Mitwirkende erweitert;
+  Fassungen im Plan für alle Beteiligten sichtbar (nur Deck). Rückbau und Rechte-Test (G00–G61).
+- Zweiter Blick (Sub-Agent) fand eine Lücke: Der Besitzer eines Durchlaufs hätte eine nicht freigegebene
+  Fassung eines Mitwirkenden selbst in den Plan setzen und so lesen können. Neu deshalb: Eine Fassung setzt
+  nur, wer den Tag hält (Regel + Trigger `kt_plan_pruefen`); wer austritt oder ausgetragen wird, verliert
+  seine Plantage (Trigger `kt_mitwirkender_entfernt`), seine Fassung ist dann nicht mehr sichtbar; Haken
+  lassen sich nicht in einen anderen Tag oder Durchlauf verschieben; „wer zuletzt abgehakt hat“ ändert sich
+  nur beim Abhaken, nicht bei der Notiz; Kurs eines Durchlaufs unveränderlich; Fremdschlüssel mit
+  `ON DELETE`; Hilfsfunktionen antworten nur Beteiligten; Datenprüfung vorab (KT-G00).
+- Zweiter Blick auf die überarbeitete Fassung (15.11.2026): kein Blocker. Umgesetzt: `kt_fassung_passt`
+  antwortet nur über eigene Fassungen (verriet sonst, ob es eine fremde Fassung gibt und wem sie gehört;
+  die Planregel hält damit auch ohne Trigger); „wer“-Trigger lässt Folgeänderungen der Datenbank stehen
+  (sonst blockiert das Löschen eines Trainers); Indizes für Plan und „wer“; Selbstprüfung prüft Inhalt
+  der Regeln und alle Spaltenrechte auf `durchlaeufe`; Test um upsert-Wege, Hilfsfunktionen für Fremde,
+  später Aufgenommene und gelöschte Trainer ergänzt; `lock_timeout` auch im Test.
+- App: Haken und Tagesnotiz werden getrennt gespeichert. Die Notiz (`src/lib/notizEntwurf.ts`) speichert
+  nach kurzer Pause, beim Verlassen des Feldes und beim Zuklappen, nie zwei Aufträge gleichzeitig. Jeder
+  Entwurf merkt sich den Stand, auf dem er beruht, und speichert nur, wenn ihn seither niemand geändert
+  hat (Versionsmarke `geaendert_am`); bei einem Konflikt wird neu geladen und der neueste eigene Text in
+  der Meldung gezeigt; bei anderen Fehlern bleibt der Text im Feld und wird erneut gesendet. Der Haken
+  liefert den ganzen Stand zurück; verspätete ältere Antworten überschreiben keinen neueren Stand. Nach
+  dem Wechsel des Durchlaufs ist erst bearbeitbar, was geladen ist. Ladefehler (Tage, Plan, Fassungen,
+  Trainer) werden angezeigt statt verschluckt.
+- Dritter Blick (nur auf die Änderungen) fand drei Wege, auf denen Notiztext verloren gehen konnte
+  (Haken schob die Versionsmarke weiter; Netzfehler löschte den Entwurf; Konflikt verschluckte neueren
+  Text): behoben, siehe oben.
+- Neu: `src/lib/tagebuch.test.ts` (9 Fälle) und `src/lib/notizEntwurf.test.ts` (6 Fälle); 5 Gegenproben
+  (Versionsprüfung weg, Grundlage neu beim Tippen, Fehler verwirft Text, Konflikt nennt alten Text,
+  gleichzeitige Aufträge): alle erkannt. Insgesamt 49 Tests grün.
+- SPEC: Annahme zu Notizen präzisiert (Folien-Notizen privat, Tagesnotiz gemeinsam, OFFENE-FRAGEN Nr. 23);
+  neu OFFENE-FRAGEN Nr. 24 (wer im gemeinsamen Durchlauf was sieht).
+- Probelauf (alles in einer Transaktion, zurückgerollt): Migration + neuer Test, Migration + jeder der vier
+  bisherigen Tests, Migration + Rückbau + alte Tests: alle grün. Nach Migration + Rückbau ist der Stand
+  (Regeln, Funktionen, Spalten, Rechte, Trigger, Indizes) laut Prüfsumme identisch mit vorher.
+  9 Gegenproben (je ein Trigger entfernt, alte Prüffunktion, Recht zurück, Regel geschwächt, falsche
+  Erwartung): alle erkannt.
+- App auf dem Zweig `baustein-5-gemeinsam`: Tagebuch mit Team-Leiste (aufnehmen, austragen, sich selbst
+  austragen), je Tag „hält: …“ und „mit: …“ (eigene Fassung), „abgehakt von …“, fremde Durchläufe in der
+  Auswahl mit „(von …)“. Wird erst nach Nikos „ja“ und dem Einspielen nach `main` gemischt.
+
 ## 2026-11-13 · Baustein 4, Teil 2 · Eigene Fassungen hochladen und freigeben
 
 - Migration `20261113210000_kt_deck_fassungen.sql` (hinzufügend, nach Sicherung eingespielt): Tabellen
