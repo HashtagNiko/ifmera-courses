@@ -1,16 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import KeinKurs from '../components/KeinKurs'
 import { kurseLaden, type Kurs } from '../lib/kurse'
 import {
   durchlaeufeLaden,
   durchlaufAnlegen,
   kopiertext,
+  mitwirkendeLaden,
+  mitwirkendenAufnehmen,
+  mitwirkendenAustragen,
+  planFassungSetzen,
+  planTrainerSetzen,
   standSetzen,
   tageLaden,
   tagesBezeichnung,
   type Durchlauf,
   type TagebuchTag,
 } from '../lib/tagebuch'
+import { fassungenFuerTage, kursZugangVon, type Fassung } from '../lib/fassungen'
+import { trainerLaden, type Trainer } from '../lib/trainer'
+import { useIch } from '../lib/TrainerContext'
 import Kopfzeile from '../components/Kopfzeile'
 import { useDurchlauf } from '../lib/DurchlaufContext'
 
@@ -56,9 +64,71 @@ export default function TagebuchPage() {
 
   async function aendern(tag: TagebuchTag, aenderung: { vermittelt?: boolean; notiz?: string }) {
     if (!durchlaufId) return
-    setTage((vorher) => vorher.map((t) => (t.id === tag.id ? { ...t, ...aenderung } : t)))
+    // "wer" ändert sich wie in der Datenbank nur beim Abhaken, nicht bei der Notiz
+    const wer = aenderung.vermittelt !== undefined ? { geaendert_von: ich.id } : {}
+    setTage((vorher) => vorher.map((t) => (t.id === tag.id ? { ...t, ...aenderung, ...wer } : t)))
     try {
       await standSetzen(durchlaufId, tag, aenderung)
+    } catch (e) {
+      setFehler((e as Error).message)
+    }
+  }
+
+  // ---- Gemeinsamer Durchlauf (Baustein 5): Team, Plan, Fassungen ----
+  const ich = useIch()
+  const [namen, setNamen] = useState<Map<string, string>>(new Map())
+  const [kandidaten, setKandidaten] = useState<Trainer[]>([])
+  const [mitwirkende, setMitwirkende] = useState<string[]>([])
+  const [fassungen, setFassungen] = useState<Fassung[]>([])
+  const durchlauf = durchlaeufe.find((d) => d.id === durchlaufId) ?? null
+  const istBesitzer = Boolean(durchlauf && durchlauf.besitzer_id === ich.id)
+  const team = durchlauf ? [durchlauf.besitzer_id, ...mitwirkende.filter((m) => m !== durchlauf.besitzer_id)] : []
+
+  // Namen aller sichtbaren Trainer; aufnehmen kann man nur Trainer, die den Kurs selbst sehen dürfen
+  useEffect(() => {
+    if (!kursId) return
+    let aktiv = true
+    trainerLaden()
+      .then(async (alle) => {
+        if (!aktiv) return
+        setNamen(new Map(alle.map((t) => [t.id, t.anzeigename])))
+        const andere = alle.filter((t) => t.id !== ich.id && t.aktiv)
+        const mitZugang = await Promise.all(
+          andere.map(async (t) => ((await kursZugangVon(t.id, kursId).catch(() => false)) ? t : null)),
+        )
+        if (aktiv) setKandidaten(mitZugang.filter((t): t is Trainer => t !== null))
+      })
+      .catch(() => undefined)
+    return () => {
+      aktiv = false
+    }
+  }, [kursId, ich.id])
+
+  const teamLaden = useCallback(async () => {
+    if (!durchlaufId) {
+      setMitwirkende([])
+      return
+    }
+    setMitwirkende(await mitwirkendeLaden(durchlaufId))
+  }, [durchlaufId])
+
+  useEffect(() => {
+    teamLaden().catch((e: Error) => setFehler(e.message))
+  }, [teamLaden])
+
+  useEffect(() => {
+    fassungenFuerTage(tage.filter((t) => t.deck_pfad).map((t) => t.id))
+      .then(setFassungen)
+      .catch(() => setFassungen([]))
+  }, [tage])
+
+  async function planAendern(schritt: () => Promise<void>) {
+    if (!kursId) return
+    setFehler(null)
+    try {
+      await schritt()
+      setTage(await tageLaden(kursId, durchlaufId))
+      await teamLaden()
     } catch (e) {
       setFehler((e as Error).message)
     }
@@ -111,6 +181,7 @@ export default function TagebuchPage() {
             {durchlaeufe.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
+                {d.besitzer_id !== ich.id ? ` (von ${namen.get(d.besitzer_id) ?? 'einem anderen Trainer'})` : ''}
               </option>
             ))}
           </select>
@@ -139,6 +210,29 @@ export default function TagebuchPage() {
           />
         )}
 
+        {durchlauf && (
+          <TeamLeiste
+            durchlauf={durchlauf}
+            istBesitzer={istBesitzer}
+            mitwirkende={mitwirkende}
+            kandidaten={kandidaten.filter((k) => !team.includes(k.id))}
+            namen={namen}
+            ichId={ich.id}
+            aufnehmen={(t) => planAendern(() => mitwirkendenAufnehmen(durchlauf.id, t))}
+            austragen={(t) => {
+              const selbst = t === ich.id
+              if (!window.confirm(selbst ? 'Dich aus diesem Durchlauf austragen?' : `${namen.get(t) ?? 'Trainer'} austragen?`)) return
+              void planAendern(async () => {
+                await mitwirkendenAustragen(durchlauf.id, t)
+                if (selbst) {
+                  setDurchlaeufe((v) => v.filter((d) => d.id !== durchlauf.id))
+                  setDurchlaufId(null)
+                }
+              })
+            }}
+          />
+        )}
+
         {fehler && (
           <p className="mb-4 rounded-lg bg-ifm-red/15 text-ifm-blue text-sm p-3">{fehler}</p>
         )}
@@ -157,6 +251,20 @@ export default function TagebuchPage() {
               tag={tag}
               bearbeitbar={Boolean(durchlaufId)}
               aendern={aendern}
+              plan={
+                durchlauf && team.length > 1
+                  ? {
+                      team,
+                      namen,
+                      ichId: ich.id,
+                      istBesitzer,
+                      eigeneFassungen: fassungen.filter((f) => f.kurstag_id === tag.id && f.besitzer_id === ich.id),
+                      gewaehlteFassung: fassungen.find((f) => f.id === tag.fassung_id) ?? null,
+                      trainerSetzen: (t) => planAendern(() => planTrainerSetzen(durchlauf.id, tag.id, t)),
+                      fassungSetzen: (f) => planAendern(() => planFassungSetzen(durchlauf.id, tag.id, f)),
+                    }
+                  : null
+              }
             />
           ))}
         </div>
@@ -171,14 +279,28 @@ export default function TagebuchPage() {
   )
 }
 
+interface PlanAngaben {
+  team: string[]
+  namen: Map<string, string>
+  ichId: string
+  istBesitzer: boolean
+  eigeneFassungen: Fassung[]
+  gewaehlteFassung: Fassung | null
+  trainerSetzen: (trainerId: string | null) => void
+  fassungSetzen: (fassungId: string | null) => void
+}
+
 function Tageszeile({
   tag,
   bearbeitbar,
   aendern,
+  plan,
 }: {
   tag: TagebuchTag
   bearbeitbar: boolean
   aendern: (tag: TagebuchTag, aenderung: { vermittelt?: boolean; notiz?: string }) => void
+  /** nur bei gemeinsamen Durchläufen (mehr als ein Trainer) */
+  plan: PlanAngaben | null
 }) {
   const [offen, setOffen] = useState(false)
   const [kopiert, setKopiert] = useState(false)
@@ -216,6 +338,11 @@ function Tageszeile({
             )}
           </div>
           <h2 className="font-medium text-ifm-blue">{tag.tagebuch_titel ?? 'Ohne Titel'}</h2>
+
+          {plan && <PlanZeile tag={tag} plan={plan} />}
+          {plan && tag.vermittelt && tag.geaendert_von && tag.geaendert_von !== plan.ichId && (
+            <p className="mt-1 text-xs text-ifm-gray">abgehakt von {plan.namen.get(tag.geaendert_von) ?? 'einem Trainer'}</p>
+          )}
 
           {offen && text && (
             <pre className="mt-3 whitespace-pre-wrap font-sans text-sm text-ifm-blue bg-ifm-cream rounded-lg p-3">
@@ -260,6 +387,131 @@ function Tageszeile({
         </div>
       </div>
     </section>
+  )
+}
+
+/** Wer hält den Tag, mit welcher Fassung (gemeinsamer Durchlauf, Baustein 5). */
+function PlanZeile({ tag, plan }: { tag: TagebuchTag; plan: PlanAngaben }) {
+  const name = (id: string) => (id === plan.ichId ? 'ich' : (plan.namen.get(id) ?? 'Trainer'))
+  const meinTag = tag.trainer_id === plan.ichId
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ifm-gray">
+      <span>hält:</span>
+      {plan.istBesitzer ? (
+        <select
+          value={tag.trainer_id ?? ''}
+          onChange={(e) => plan.trainerSetzen(e.target.value || null)}
+          className="rounded border border-ifm-lightblue bg-white px-2 py-0.5 text-ifm-blue"
+        >
+          <option value="">noch offen</option>
+          {plan.team.map((t) => (
+            <option key={t} value={t}>
+              {name(t)}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className="font-medium text-ifm-blue">{tag.trainer_id ? name(tag.trainer_id) : 'noch offen'}</span>
+      )}
+      {tag.deck_pfad && tag.trainer_id && (
+        <>
+          <span className="ml-2">mit:</span>
+          {meinTag ? (
+            <select
+              value={tag.fassung_id ?? ''}
+              onChange={(e) => plan.fassungSetzen(e.target.value || null)}
+              className="rounded border border-ifm-lightblue bg-white px-2 py-0.5 text-ifm-blue"
+              title="Eigene Fassungen legst du unter Kurstage, „⧉ Fassungen“ an"
+            >
+              <option value="">Original</option>
+              {plan.eigeneFassungen.map((f) => (
+                <option key={f.id} value={f.id}>
+                  „{f.titel}“
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="font-medium text-ifm-blue">
+              {tag.fassung_id ? `„${plan.gewaehlteFassung?.titel ?? 'eigene Fassung'}“` : 'Original'}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Wer im Durchlauf mitmacht; der Besitzer nimmt auf und trägt aus, Mitwirkende können sich austragen. */
+function TeamLeiste({
+  durchlauf,
+  istBesitzer,
+  mitwirkende,
+  kandidaten,
+  namen,
+  ichId,
+  aufnehmen,
+  austragen,
+}: {
+  durchlauf: Durchlauf
+  istBesitzer: boolean
+  mitwirkende: string[]
+  kandidaten: Trainer[]
+  namen: Map<string, string>
+  ichId: string
+  aufnehmen: (trainerId: string) => void
+  austragen: (trainerId: string) => void
+}) {
+  const [neu, setNeu] = useState('')
+  const name = (id: string) => (id === ichId ? 'ich' : (namen.get(id) ?? 'Trainer'))
+  if (!istBesitzer && mitwirkende.length === 0) return null
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 text-sm shadow-sm">
+      <span className="text-ifm-gray">Team:</span>
+      <span className="rounded bg-ifm-lightblue px-2 py-0.5 text-ifm-blue">{name(durchlauf.besitzer_id)} (leitet)</span>
+      {mitwirkende.map((m) => (
+        <span key={m} className="flex items-center gap-1 rounded bg-ifm-lightblue px-2 py-0.5 text-ifm-blue">
+          {name(m)}
+          {(istBesitzer || m === ichId) && (
+            <button onClick={() => austragen(m)} title={m === ichId ? 'mich austragen' : 'austragen'} className="text-ifm-gray hover:text-ifm-red">
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      {istBesitzer &&
+        (kandidaten.length > 0 ? (
+          <>
+            <select
+              value={neu}
+              onChange={(e) => setNeu(e.target.value)}
+              className="ml-2 rounded border border-ifm-lightblue px-2 py-0.5 text-ifm-blue"
+            >
+              <option value="">Trainer aufnehmen …</option>
+              {kandidaten.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.anzeigename}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={!neu}
+              onClick={() => {
+                aufnehmen(neu)
+                setNeu('')
+              }}
+              className="rounded bg-ifm-blue px-2 py-0.5 text-xs font-medium text-white disabled:opacity-50"
+            >
+              Aufnehmen
+            </button>
+          </>
+        ) : (
+          mitwirkende.length === 0 && (
+            <span className="text-xs text-ifm-gray">
+              Aufnehmen kannst du Trainer, denen der Kurs freigegeben ist (Seite „Freigaben“).
+            </span>
+          )
+        ))}
+    </div>
   )
 }
 

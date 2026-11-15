@@ -2,6 +2,29 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-13 · Baustein 5 · Gemeinsamer Durchlauf (vorbereitet, nicht eingespielt)
+
+- Migration `20261113220000_kt_gemeinsamer_durchlauf.sql` (**ersetzt Regeln, gelb**): Mitwirkende
+  (`kt_durchlauf_trainer`), Plan (`kt_durchlauf_tage`: Kurstag → Trainer + eigene Fassung),
+  `fortschritt.geaendert_von` per Trigger; Regeln für Durchläufe und Haken um Mitwirkende erweitert;
+  Fassungen im Plan für alle Beteiligten sichtbar (nur Deck). Rückbau und Rechte-Test (G00–G61).
+- Zweiter Blick (Sub-Agent) fand eine Lücke: Der Besitzer eines Durchlaufs hätte eine nicht freigegebene
+  Fassung eines Mitwirkenden selbst in den Plan setzen und so lesen können. Neu deshalb: Eine Fassung setzt
+  nur, wer den Tag hält (Regel + Trigger `kt_plan_pruefen`); wer austritt oder ausgetragen wird, verliert
+  seine Plantage (Trigger `kt_mitwirkender_entfernt`), seine Fassung ist dann nicht mehr sichtbar; Haken
+  lassen sich nicht in einen anderen Tag oder Durchlauf verschieben; „wer zuletzt abgehakt hat“ ändert sich
+  nur beim Abhaken, nicht bei der Notiz; Kurs eines Durchlaufs unveränderlich; Fremdschlüssel mit
+  `ON DELETE`; Hilfsfunktionen antworten nur Beteiligten; Datenprüfung vorab (KT-G00).
+- App: Haken und Notiz werden getrennt gespeichert (kein Überschreiben, wenn zwei gleichzeitig arbeiten);
+  Ladefehler im Tagebuch werden angezeigt statt alle Tage als offen zu zeigen.
+- Probelauf (alles in einer Transaktion, zurückgerollt): Migration + neuer Test, Migration + jeder der vier
+  bisherigen Tests, Migration + Rückbau + alte Tests: alle grün. Nach Migration + Rückbau ist der Stand
+  (Regeln, Funktionen, Spalten, Rechte, Trigger) laut Prüfsumme identisch mit vorher. 7 Gegenproben
+  (je ein Trigger entfernt, Recht zurück, Regel geschwächt, falsche Erwartung): alle erkannt.
+- App auf dem Zweig `baustein-5-gemeinsam`: Tagebuch mit Team-Leiste (aufnehmen, austragen, sich selbst
+  austragen), je Tag „hält: …“ und „mit: …“ (eigene Fassung), „abgehakt von …“, fremde Durchläufe in der
+  Auswahl mit „(von …)“. Wird erst nach Nikos „ja“ und dem Einspielen nach `main` gemischt.
+
 ## 2026-11-13 · Baustein 4, Teil 2 · Eigene Fassungen hochladen und freigeben
 
 - Migration `20261113210000_kt_deck_fassungen.sql` (hinzufügend, nach Sicherung eingespielt): Tabellen
