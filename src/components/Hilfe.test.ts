@@ -14,6 +14,7 @@ describe('seiteAus', () => {
     expect(seiteAus('/kurstage')).toBe('kurstage')
     expect(seiteAus('/fassungen/123')).toBe('fassungen')
     expect(seiteAus('/notizen/abc')).toBe('notizen')
+    expect(seiteAus('/profil')).toBe('profil')
     expect(seiteAus('/anleitung')).toBeNull()
     expect(seiteAus('/')).toBeNull()
   })
@@ -115,6 +116,8 @@ describe('Beschriftungen in Hilfe und Anleitung gibt es im Tool wirklich', () =>
     'Freigegeben von',
     'Notizen als Stichpunkte',
     'nur Stichpunkte',
+    'Name speichern',
+    'Passwort ändern',
   ]
 
   for (const b of beschriftungen) {

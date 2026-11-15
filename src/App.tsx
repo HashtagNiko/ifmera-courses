@@ -7,6 +7,7 @@ import FreigabenPage from './pages/FreigabenPage'
 import NotizenPage from './pages/NotizenPage'
 import FassungenPage from './pages/FassungenPage'
 import AnleitungPage from './pages/AnleitungPage'
+import ProfilPage from './pages/ProfilPage'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="notizen/:tagId" element={<NotizenPage />} />
         <Route path="fassungen/:tagId" element={<FassungenPage />} />
         <Route path="anleitung" element={<AnleitungPage />} />
+        <Route path="profil" element={<ProfilPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

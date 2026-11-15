@@ -31,10 +31,18 @@ export function escapeHtml(text: string): string {
 /**
  * Ersetzt den Namen in der Fußzeile. Gesucht wird nur die vollständige Fußzeile,
  * damit der Name an anderen Stellen (etwa auf einer Vorstellungsfolie) bleibt.
+ *
+ * Welcher Name im Deck steht, liest die Funktion aus der Fußzeile selbst (Baustein 8): Ändert der
+ * Besitzer seinen Anzeigenamen im Profil, stehen in seinen gebauten Decks weiter der alte; der Tausch
+ * soll trotzdem greifen. `von` (Name des Besitzers im Tool) dient nur noch als Rückfall.
  */
 export function fussNameErsetzen(html: string, von: string, nach: string): string {
   if (!von || !nach || von === nach) return html
-  return html.split(FUSS_PRAEFIX + escapeHtml(von)).join(FUSS_PRAEFIX + escapeHtml(nach))
+  const praefix = escapeHtml(FUSS_PRAEFIX)
+  const treffer = html.match(new RegExp(praefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^<"\'\\n]{1,80})<'))
+  const imDeck = treffer ? treffer[1] : escapeHtml(von)
+  if (imDeck === escapeHtml(nach)) return html
+  return html.split(FUSS_PRAEFIX + imDeck + '<').join(FUSS_PRAEFIX + escapeHtml(nach) + '<')
 }
 
 /**
