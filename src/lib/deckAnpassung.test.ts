@@ -19,10 +19,18 @@ describe('fussNameErsetzen', () => {
     expect(fussNameErsetzen(DECK, 'Herr Krnic', 'Herr Muster')).toContain('Ihr Trainer: Herr Krnic')
   })
 
-  it('ändert nichts ohne Namen oder bei gleichem Namen', () => {
-    expect(fussNameErsetzen(DECK, '', 'Herr Muster')).toBe(DECK)
+  it('ändert nichts ohne neuen Namen oder wenn er schon im Deck steht', () => {
     expect(fussNameErsetzen(DECK, 'Herr Krnic', '')).toBe(DECK)
+    expect(fussNameErsetzen(DECK, 'Herr Krnic', '  ')).toBe(DECK)
     expect(fussNameErsetzen(DECK, 'Herr Krnic', 'Herr Krnic')).toBe(DECK)
+    expect(fussNameErsetzen(DECK, 'Herr Muster', 'Herr Krnic')).toBe(DECK)
+    // ohne Fußzeile und ohne bekannten Namen: nichts
+    expect(fussNameErsetzen('<p>ohne Fußzeile</p>', '', 'Herr Muster')).toBe('<p>ohne Fußzeile</p>')
+  })
+
+  it('eigene Fassung aus fremden Quellen: auch bei gleichem Besitzer und Betrachter steht der eigene Name', () => {
+    const neu = fussNameErsetzen(DECK, 'Herr Muster', 'Herr Muster')
+    expect(neu.match(/© ifmera academy GmbH \| Herr Muster/g)).toHaveLength(2)
   })
 
   it('greift auch, wenn der Besitzer seinen Namen im Tool geändert hat (Name steht im Deck)', () => {

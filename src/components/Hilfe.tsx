@@ -276,6 +276,10 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
         Rechner; im Tool liefe ein fremdes Deck mit deiner Anmeldung.
       </li>
       <li>
+        „Teilnehmer herunterladen“ macht aus der Fassung die Teilnehmerfassung: ohne Notizen und Cockpit, mit deinem
+        Namen in der Fußzeile.
+      </li>
+      <li>
         Ändert sich die Grundlage, erscheint ein gelber Hinweis: neues Quellpaket laden, Claude die Änderungen
         übernehmen lassen, „Neue Version hochladen“, dann „Ist erledigt, …“.
       </li>

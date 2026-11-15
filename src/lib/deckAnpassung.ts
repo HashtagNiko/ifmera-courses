@@ -1,3 +1,4 @@
+import { teilnehmerFassung } from './teilnehmer'
 /**
  * Anpassungen an der Kopie eines Decks im Browser (SPEC.md, Baustein 2).
  *
@@ -15,6 +16,8 @@ export interface DeckAnpassung {
   fussName?: { von: string; nach: string }
   /** Unsichtbare Markierung (Kommentar und meta-Tag), nur beim Herunterladen. */
   markierung?: string
+  /** Teilnehmerfassung daraus machen (ohne Trainertexte und Cockpit), Baustein 9 */
+  teilnehmer?: boolean
 }
 
 const FUSS_PRAEFIX = '© ifmera academy GmbH | '
@@ -37,11 +40,11 @@ export function escapeHtml(text: string): string {
  * soll trotzdem greifen. `von` (Name des Besitzers im Tool) dient nur noch als Rückfall.
  */
 export function fussNameErsetzen(html: string, von: string, nach: string): string {
-  if (!von || !nach || von === nach) return html
+  if (!nach.trim()) return html
   const praefix = escapeHtml(FUSS_PRAEFIX)
   const treffer = html.match(new RegExp(praefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^<"\'\\n]{1,80})<'))
-  const imDeck = treffer ? treffer[1] : escapeHtml(von)
-  if (imDeck === escapeHtml(nach)) return html
+  const imDeck = treffer ? treffer[1] : von ? escapeHtml(von) : null
+  if (!imDeck || imDeck === escapeHtml(nach)) return html
   return html.split(FUSS_PRAEFIX + imDeck + '<').join(FUSS_PRAEFIX + escapeHtml(nach) + '<')
 }
 
@@ -69,6 +72,11 @@ export function markieren(html: string, text: string): string {
 
 export function deckAnpassen(html: string, a: DeckAnpassung = {}): string {
   let neu = html
+  if (a.teilnehmer) {
+    const t = teilnehmerFassung(neu)
+    if (t.bericht.offen.length) throw new Error(`Teilnehmerfassung unvollständig: ${t.bericht.offen.join(', ')}`)
+    neu = t.html
+  }
   if (a.fussName) neu = fussNameErsetzen(neu, a.fussName.von, a.fussName.nach)
   if (a.markierung) neu = markieren(neu, a.markierung)
   return neu

@@ -344,7 +344,9 @@ function FassungKarte({
         {/* Öffnen im Tool nur für eigene Fassungen: das Deck läuft dort mit der Anmeldung des Betrachters */}
         {eigen && f.deck_pfad && (
           <button
-            onClick={() => deckOeffnen(f.deck_pfad!, f.titel, undefined, notizenKurstag, 'fassungen')}
+            onClick={() =>
+              deckOeffnen(f.deck_pfad!, f.titel, { fussName: { von: besitzerName, nach: ichName } }, notizenKurstag, 'fassungen')
+            }
             className="rounded-lg bg-ifm-blue px-3 py-1.5 font-medium text-white"
           >
             Öffnen
@@ -355,12 +357,38 @@ function FassungKarte({
             disabled={gesperrt}
             onClick={() =>
               ausfuehren(() =>
-                dateiHerunterladen(f.deck_pfad!, `${name}.html`, { markierung: markierung() }, notizenKurstag, 'fassungen'),
+                dateiHerunterladen(
+                  f.deck_pfad!,
+                  `${name}.html`,
+                  { fussName: { von: besitzerName, nach: ichName }, markierung: markierung() },
+                  notizenKurstag,
+                  'fassungen',
+                ),
               )
             }
             className="font-medium text-ifm-blue underline-offset-2 hover:underline disabled:opacity-50"
           >
             Deck herunterladen
+          </button>
+        )}
+        {f.deck_pfad && (
+          <button
+            disabled={gesperrt}
+            title="Für die Teilnehmer: ohne Notizen und Cockpit, mit deinem Namen in der Fußzeile"
+            onClick={() =>
+              ausfuehren(() =>
+                dateiHerunterladen(
+                  f.deck_pfad!,
+                  `${name} (Teilnehmer).html`,
+                  { teilnehmer: true, fussName: { von: besitzerName, nach: ichName }, markierung: markierung() },
+                  undefined,
+                  'fassungen',
+                ),
+              )
+            }
+            className="font-medium text-ifm-blue underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            Teilnehmer herunterladen
           </button>
         )}
         {f.quellen_pfad && (stufe === 'besitzer' || stufe === 'fassung') && (

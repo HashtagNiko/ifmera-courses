@@ -24,9 +24,13 @@
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, extname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import JSZip from 'jszip'
 
 const FESTES_DATUM = new Date('2026-01-01T00:00:00Z')
+
+// Zeilenenden vereinheitlichen, damit die Prüfsumme nicht davon abhängt, wie Git ausgecheckt hat
+const PDF_FASSUNG = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'paket', 'pdf_fassung.py'), 'utf8').replace(/\r\n/g, '\n')
 
 const sha256 = (daten) => createHash('sha256').update(daten).digest('hex')
 
@@ -67,6 +71,11 @@ export function quellpaketPlanen(segmentOrdner, deckDatei, { anleitung = '', kur
   }
   dateien.push({ ziel: 'engine/deck_engine.html', quelle: engine })
   dateien.push({ ziel: 'engine/build.py', quelle: buildPy })
+  // Teilnehmerfassung und PDF (Baustein 9): die Programme des Kursautors, falls vorhanden
+  for (const werkzeug of ['teilnehmer.py', 'pdf.py']) {
+    const pfad = join(dirname(engine), werkzeug)
+    if (existsSync(pfad)) dateien.push({ ziel: `engine/${werkzeug}`, quelle: pfad })
+  }
 
   const paketBauplan = {
     engine: 'engine/deck_engine.html',
@@ -76,6 +85,8 @@ export function quellpaketPlanen(segmentOrdner, deckDatei, { anleitung = '', kur
     'build.json': JSON.stringify(paketBauplan, null, 2) + '\n',
     'CLAUDE.md': anleitung,
     ...(kursregeln ? { 'KURSREGELN.md': kursregeln } : {}),
+    // Startprogramm für Teilnehmerfassung und PDF im Paket (aus dem Repo, scripts/paket/)
+    ...(dateien.some((d) => d.ziel === 'engine/pdf.py') ? { 'engine/pdf_fassung.py': PDF_FASSUNG } : {}),
   }
 
   const pruefsumme = sha256(

@@ -2,6 +2,25 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Baustein 9 · Teilnehmerfassung und PDF zu Fassungen, Ablage
+
+- `src/lib/teilnehmer.ts`: Teilnehmerfassung im Browser, übertragen aus Nikos `engine/teilnehmer.py`
+  (Navigationsbaustein wörtlich übernommen, Zeilenenden wie die Vorlage). Test
+  `teilnehmer.engine.test.ts`: alle 44 fertigen Teilnehmerfassungen beider Kurse byte-gleich; Gegenprobe
+  (ohne „Brücken“-Texte) schlägt an.
+- Fassungen: neuer Knopf „Teilnehmer herunterladen“; in Deck, Teilnehmerfassung und beim Öffnen steht der
+  Name dessen, der sie lädt. `fussNameErsetzen` ersetzt jetzt auch bei gleichem Besitzer und Betrachter,
+  wenn im Deck ein anderer Name steht (eigene Fassung aus fremden Quellen).
+- Quellpaket: zusätzlich Nikos `engine/teilnehmer.py` und `engine/pdf.py` sowie `engine/pdf_fassung.py`
+  (`scripts/paket/`). Probe: Paket H&G Tag 8 entpackt, gebaut, `pdf_fassung.py`: Teilnehmerfassung
+  byte-gleich mit Nikos, PDF 30 Seiten mit identischem Text. Paket-Anleitung: Abschnitte „Teilnehmerfassung
+  und PDF“ und „Ablage und Ablauf beim Trainer“ (auch als Arbeitsanweisung für Claude). Einrichtungs-Datei
+  und Anleitung im Tool: Ablage und PDF-Einrichtung.
+- Neue Quellpakete geladen: WEG 16, WEG kompakt 8, H&G kompakt 5 (H&G voll folgt nach Entscheidung zu den
+  „Brücken“-Texten). Rechte-Tests 8/8, Downloads 184/184. 97 Tests grün.
+- Gelber Schritt (Niko: „Ja“): Adresse des Co-Trainers in die Einladungsliste des Prüfungstools eingetragen
+  (nach zweitem Blick: Abgleich ohne Groß-/Kleinschreibung, keine Nebenwirkungen). Konto legt Niko an.
+
 ## 2026-11-15 · Baustein 8 · Profil (Name und Passwort)
 
 - Migration `20261115120000_kt_profil.sql` (hinzufügend, nach Sicherung eingespielt): Funktion
