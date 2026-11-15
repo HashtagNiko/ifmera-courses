@@ -28,6 +28,10 @@
 -- Nach dem zweiten Blick (Sub-Agent, 13.11.2026) verschaerft: Fassung im Plan nur durch ihren Besitzer;
 -- Austreten raeumt den Plan; Haken nicht verschiebbar; geaendert_von nur beim Abhaken; Fremdschluessel mit
 -- ON DELETE; Hilfsfunktionen nur fuer Beteiligte; kurs_id unveraenderlich; Spaltenrechte; Datenpruefung vorab.
+-- Zweiter Blick auf die neue Fassung (15.11.2026): kt_fassung_passt nur ueber eigene Fassungen (die Planregel
+-- haelt damit auch ohne Trigger); "wer"-Trigger laesst Folgeaenderungen stehen; Indizes; genauere Selbstpruefung.
+-- Bekannt und gewollt (OFFENE-FRAGEN Nr. 24): Wer seine Fassung in den Plan setzt, zeigt sie allen im Durchlauf,
+-- auch spaeter Aufgenommenen.
 --
 -- Rueckbau: supabase/rueckbau/20261113220000_kt_gemeinsamer_durchlauf.sql
 
@@ -68,6 +72,9 @@ create table public.kt_durchlauf_tage (
     references public.kt_deck_fassungen (id, kurstag_id) on delete set null (fassung_id)
 );
 
+create index kt_durchlauf_tage_trainer_idx on public.kt_durchlauf_tage (trainer_id);
+create index kt_durchlauf_tage_fassung_idx on public.kt_durchlauf_tage (fassung_id) where fassung_id is not null;
+
 alter table public.kt_durchlauf_trainer enable row level security;
 alter table public.kt_durchlauf_tage enable row level security;
 revoke all on public.kt_durchlauf_trainer, public.kt_durchlauf_tage from anon, authenticated;
@@ -81,6 +88,7 @@ comment on table public.kt_durchlauf_tage is 'Plan eines Durchlaufs: wer haelt w
 
 alter table public.fortschritt add column geaendert_von uuid references public.kt_trainer (id) on delete set null;
 comment on column public.fortschritt.geaendert_von is 'Wer zuletzt abgehakt oder den Haken zurueckgenommen hat (setzt die Datenbank).';
+create index fortschritt_geaendert_von_idx on public.fortschritt (geaendert_von) where geaendert_von is not null;
 
 -- Der Kurs eines Durchlaufs ist unveraenderlich (sonst zeigten Plan und Haken auf Tage eines anderen Kurses)
 revoke update on public.durchlaeufe from authenticated;
@@ -128,14 +136,15 @@ as $$
          or exists (select 1 from public.kt_durchlauf_trainer m where m.durchlauf_id = p_durchlauf_id and m.trainer_id = p_trainer_id));
 $$;
 
--- Passt eine Fassung zu einem Plantag: eigene Fassung des Tagestrainers, gleicher Kurstag?
+-- Passt eine Fassung zu einem Plantag: eigene Fassung des Angemeldeten, der den Tag haelt, gleicher Kurstag?
+-- Antwortet nur ueber eigene Fassungen (verraet nichts ueber fremde).
 create function public.kt_fassung_passt(p_fassung_id uuid, p_trainer_id uuid, p_kurstag_id uuid)
 returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select p_fassung_id is null or (public.kt_ist_trainer() and exists (
+  select p_fassung_id is null or (public.kt_ist_trainer() and p_trainer_id = auth.uid() and exists (
     select 1 from public.kt_deck_fassungen f
-    where f.id = p_fassung_id and f.besitzer_id = p_trainer_id and f.kurstag_id = p_kurstag_id
+    where f.id = p_fassung_id and f.besitzer_id = auth.uid() and f.kurstag_id = p_kurstag_id
   ));
 $$;
 
@@ -202,7 +211,8 @@ begin
   end if;
   if tg_op = 'INSERT' or new.vermittelt is distinct from old.vermittelt then
     new.geaendert_von := coalesce(auth.uid(), new.geaendert_von);
-  elsif auth.uid() is not null then
+  elsif auth.uid() is not null and pg_trigger_depth() = 1 then
+    -- nur bei direkten Aenderungen; Folgeaenderungen der Datenbank (ON DELETE SET NULL) bleiben stehen
     new.geaendert_von := old.geaendert_von;
   end if;
   new.geaendert_am := now();
@@ -367,8 +377,13 @@ declare n int; f regprocedure;
 begin
   select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'durchlaeufe';
   if n <> 4 then raise exception 'KT-G01: erwartet 4 Regeln auf durchlaeufe, gefunden %', n; end if;
-  select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'fortschritt';
-  if n <> 4 then raise exception 'KT-G02: erwartet 4 Regeln auf fortschritt, gefunden %', n; end if;
+  select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'fortschritt'
+    and coalesce(qual, with_check) like '%kt_durchlauf_rolle%';
+  if n <> 4 then raise exception 'KT-G02: erwartet 4 neue Regeln auf fortschritt, gefunden %', n; end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'durchlaeufe'
+                 and policyname = 'kt durchlaeufe lesen' and qual like '%kt_durchlauf_rolle%') then
+    raise exception 'KT-G02b: Leseregel auf durchlaeufe nicht ersetzt';
+  end if;
   select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'kt_durchlauf_trainer';
   if n <> 3 then raise exception 'KT-G03: erwartet 3 Regeln auf kt_durchlauf_trainer, gefunden %', n; end if;
   select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'kt_durchlauf_tage';
@@ -389,7 +404,10 @@ begin
      or has_table_privilege('authenticated', 'public.kt_durchlauf_tage', 'TRUNCATE,REFERENCES,TRIGGER')
      or has_column_privilege('authenticated', 'public.kt_durchlauf_tage', 'durchlauf_id', 'UPDATE')
      or has_column_privilege('authenticated', 'public.kt_durchlauf_tage', 'kurstag_id', 'UPDATE')
-     or has_column_privilege('authenticated', 'public.durchlaeufe', 'kurs_id', 'UPDATE') then
+     or has_column_privilege('authenticated', 'public.durchlaeufe', 'kurs_id', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.durchlaeufe', 'besitzer_id', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.durchlaeufe', 'id', 'UPDATE')
+     or not has_column_privilege('authenticated', 'public.durchlaeufe', 'name', 'UPDATE') then
     raise exception 'KT-G08: unnoetige oder zu weite Rechte';
   end if;
   for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace

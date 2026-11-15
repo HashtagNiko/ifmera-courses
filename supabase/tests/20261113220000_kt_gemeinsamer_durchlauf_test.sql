@@ -9,6 +9,8 @@
 
 begin;
 
+set local lock_timeout = '3s';
+
 insert into public.eingeladene_trainer (email) values
   ('kt-test-co@example.invalid'), ('kt-test-co2@example.invalid'),
   ('kt-test-co3@example.invalid'), ('kt-test-fremd@example.invalid');
@@ -248,6 +250,14 @@ begin
     raise exception 'G21: Co konnte einen Plantag anlegen';
   exception when insufficient_privilege then null;
   end;
+  begin
+    insert into public.kt_durchlauf_tage (durchlauf_id, kurstag_id, trainer_id)
+    values (current_setting('kt.dl')::uuid, current_setting('kt.weg_tag2')::uuid, current_setting('kt.co')::uuid)
+    on conflict (durchlauf_id, kurstag_id) do update
+      set durchlauf_id = excluded.durchlauf_id, kurstag_id = excluded.kurstag_id, trainer_id = excluded.trainer_id;
+    raise exception 'G21b: Co konnte Nikos Tag per upsert uebernehmen';
+  exception when insufficient_privilege then null;
+  end;
   delete from public.kt_durchlauf_tage where durchlauf_id = current_setting('kt.dl')::uuid;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'G22: Co konnte Plantage loeschen'; end if;
@@ -320,6 +330,14 @@ begin
     raise exception 'G29: Niko konnte einen Haken in einen anderen Durchlauf verschieben';
   exception when insufficient_privilege then null;
   end;
+  begin
+    insert into public.fortschritt (id, durchlauf_id, kurstag_id, vermittelt)
+    select f.id, current_setting('kt.dl2')::uuid, current_setting('kt.weg_tag')::uuid, true from public.fortschritt f
+    where f.durchlauf_id = current_setting('kt.dl')::uuid and f.kurstag_id = current_setting('kt.weg_tag')::uuid
+    on conflict (id) do update set durchlauf_id = excluded.durchlauf_id;
+    raise exception 'G29b: Niko konnte einen Haken per upsert in einen anderen Durchlauf verschieben';
+  exception when insufficient_privilege then null;
+  end;
 
   -- Cos eingeplante Fassung: sichtbar zum Ansehen (Deck), nicht das Quellpaket
   select count(*) into n from public.kt_deck_fassungen where id = current_setting('kt.f_co')::uuid;
@@ -369,7 +387,8 @@ begin
   if public.kt_durchlauf_rolle(current_setting('kt.dl')::uuid) is not null
      or public.kt_durchlauf_kurs(current_setting('kt.dl')::uuid) is not null
      or public.kt_tag_im_durchlauf(current_setting('kt.dl')::uuid, current_setting('kt.weg_tag')::uuid)
-     or public.kt_ist_im_durchlauf(current_setting('kt.dl')::uuid, current_setting('kt.niko')::uuid) then
+     or public.kt_ist_im_durchlauf(current_setting('kt.dl')::uuid, current_setting('kt.niko')::uuid)
+     or public.kt_fassung_passt(current_setting('kt.f_co')::uuid, current_setting('kt.co')::uuid, current_setting('kt.weg_tag')::uuid) then
     raise exception 'G41: Hilfsfunktionen verraten Co2 etwas ueber einen fremden Durchlauf';
   end if;
 end
@@ -389,6 +408,7 @@ begin
     raise exception 'G42: fremdes Konto sieht etwas vom gemeinsamen Durchlauf';
   end if;
   if public.kt_durchlauf_kurs(current_setting('kt.dl')::uuid) is not null
+     or public.kt_durchlauf_rolle(current_setting('kt.dl')::uuid) is not null
      or public.kt_fassung_passt(current_setting('kt.f_co')::uuid, current_setting('kt.co')::uuid, current_setting('kt.weg_tag')::uuid) then
     raise exception 'G43: Hilfsfunktionen verraten einem fremden Konto etwas';
   end if;
@@ -512,6 +532,20 @@ end
 $$;
 reset role;
 
+select set_config('request.jwt.claims', json_build_object('sub', current_setting('kt.co2'), 'role', 'authenticated')::text, true);
+set local role authenticated;
+do $$
+declare n int;
+begin
+  -- gewollt (OFFENE-FRAGEN Nr. 24): wer spaeter dazukommt, sieht die eingeplanten Fassungen auch, aber nur das Deck
+  select count(*) into n from public.kt_deck_fassungen where id = current_setting('kt.f_co')::uuid;
+  if n <> 1 then raise exception 'G53b: Co2 sieht als Mitwirkender die eingeplante Fassung nicht'; end if;
+  select count(*) into n from storage.objects where bucket_id = 'fassungen' and name like current_setting('kt.co') || '/%/quellen.zip';
+  if n <> 0 then raise exception 'G53c: Co2 sieht das Quellpaket einer eingeplanten Fassung'; end if;
+end
+$$;
+reset role;
+
 select set_config('request.jwt.claims', json_build_object('sub', current_setting('kt.co'), 'role', 'authenticated')::text, true);
 set local role authenticated;
 do $$
@@ -578,5 +612,22 @@ begin
 end
 $$;
 reset role;
+
+-- ===========================================================================
+-- M. Wird ein Trainer geloescht, wird "wer" leer (auch waehrend jemand angemeldet ist)
+-- ===========================================================================
+select set_config('request.jwt.claims', '{}', true);
+insert into public.fortschritt (durchlauf_id, kurstag_id, vermittelt, geaendert_von)
+values (current_setting('kt.dl')::uuid, current_setting('kt.weg_tag2')::uuid, true, current_setting('kt.co3')::uuid);
+select set_config('request.jwt.claims', json_build_object('sub', current_setting('kt.niko'), 'role', 'authenticated')::text, true);
+delete from public.kt_trainer where id = current_setting('kt.co3')::uuid;
+do $$
+begin
+  if (select geaendert_von from public.fortschritt
+      where durchlauf_id = current_setting('kt.dl')::uuid and kurstag_id = current_setting('kt.weg_tag2')::uuid) is not null then
+    raise exception 'G62: Nach dem Loeschen eines Trainers zeigt "wer" noch auf ihn';
+  end if;
+end
+$$;
 
 rollback;

@@ -15,12 +15,25 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   lassen sich nicht in einen anderen Tag oder Durchlauf verschieben; „wer zuletzt abgehakt hat“ ändert sich
   nur beim Abhaken, nicht bei der Notiz; Kurs eines Durchlaufs unveränderlich; Fremdschlüssel mit
   `ON DELETE`; Hilfsfunktionen antworten nur Beteiligten; Datenprüfung vorab (KT-G00).
-- App: Haken und Notiz werden getrennt gespeichert (kein Überschreiben, wenn zwei gleichzeitig arbeiten);
-  Ladefehler im Tagebuch werden angezeigt statt alle Tage als offen zu zeigen.
+- Zweiter Blick auf die überarbeitete Fassung (15.11.2026): kein Blocker. Umgesetzt: `kt_fassung_passt`
+  antwortet nur über eigene Fassungen (verriet sonst, ob es eine fremde Fassung gibt und wem sie gehört;
+  die Planregel hält damit auch ohne Trigger); „wer“-Trigger lässt Folgeänderungen der Datenbank stehen
+  (sonst blockiert das Löschen eines Trainers); Indizes für Plan und „wer“; Selbstprüfung prüft Inhalt
+  der Regeln und alle Spaltenrechte auf `durchlaeufe`; Test um upsert-Wege, Hilfsfunktionen für Fremde,
+  später Aufgenommene und gelöschte Trainer ergänzt; `lock_timeout` auch im Test.
+- App: Haken und Tagesnotiz werden getrennt gespeichert. Die Notiz speichert nach kurzer Pause, beim
+  Verlassen des Feldes und beim Zuklappen, Aufträge je Tag nacheinander, und nur, wenn seit dem Laden
+  niemand anderes sie geändert hat (Versionsmarke `geaendert_am`); sonst wird neu geladen und der nicht
+  gespeicherte Text in der Meldung gezeigt. Fehlgeschlagener Haken springt auf den Stand der Datenbank
+  zurück. Ladefehler (Tage, Plan, Fassungen, Trainer) werden angezeigt statt verschluckt.
+  Neu: `src/lib/tagebuch.test.ts` (7 Fälle, Gegenprobe ohne Versionsprüfung schlägt an).
+- SPEC: Annahme zu Notizen präzisiert (Folien-Notizen privat, Tagesnotiz gemeinsam, OFFENE-FRAGEN Nr. 23);
+  neu OFFENE-FRAGEN Nr. 24 (wer im gemeinsamen Durchlauf was sieht).
 - Probelauf (alles in einer Transaktion, zurückgerollt): Migration + neuer Test, Migration + jeder der vier
   bisherigen Tests, Migration + Rückbau + alte Tests: alle grün. Nach Migration + Rückbau ist der Stand
-  (Regeln, Funktionen, Spalten, Rechte, Trigger) laut Prüfsumme identisch mit vorher. 7 Gegenproben
-  (je ein Trigger entfernt, Recht zurück, Regel geschwächt, falsche Erwartung): alle erkannt.
+  (Regeln, Funktionen, Spalten, Rechte, Trigger, Indizes) laut Prüfsumme identisch mit vorher.
+  9 Gegenproben (je ein Trigger entfernt, alte Prüffunktion, Recht zurück, Regel geschwächt, falsche
+  Erwartung): alle erkannt.
 - App auf dem Zweig `baustein-5-gemeinsam`: Tagebuch mit Team-Leiste (aufnehmen, austragen, sich selbst
   austragen), je Tag „hält: …“ und „mit: …“ (eigene Fassung), „abgehakt von …“, fremde Durchläufe in der
   Auswahl mit „(von …)“. Wird erst nach Nikos „ja“ und dem Einspielen nach `main` gemischt.
