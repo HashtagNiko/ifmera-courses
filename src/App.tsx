@@ -6,6 +6,7 @@ import TagebuchPage from './pages/TagebuchPage'
 import FreigabenPage from './pages/FreigabenPage'
 import NotizenPage from './pages/NotizenPage'
 import FassungenPage from './pages/FassungenPage'
+import AnleitungPage from './pages/AnleitungPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="freigaben" element={<FreigabenPage />} />
         <Route path="notizen/:tagId" element={<NotizenPage />} />
         <Route path="fassungen/:tagId" element={<FassungenPage />} />
+        <Route path="anleitung" element={<AnleitungPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

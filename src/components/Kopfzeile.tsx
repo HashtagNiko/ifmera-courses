@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useIch } from '../lib/TrainerContext'
+import HilfeKnopf from './Hilfe'
 
 /** Kopfzeile mit dem Wechsel zwischen Kachelansicht, Trainertagebuch und Freigaben. */
 export default function Kopfzeile({ titel }: { titel: string }) {
@@ -22,9 +23,12 @@ export default function Kopfzeile({ titel }: { titel: string }) {
           <Reiter zu="/kurstage">Kurstage</Reiter>
           <Reiter zu="/tagebuch">Tagebuch</Reiter>
           <Reiter zu="/freigaben">Freigaben</Reiter>
+          <Reiter zu="/anleitung">Anleitung</Reiter>
         </nav>
 
-        <button onClick={signOut} className="ml-auto text-sm text-ifm-gray hover:text-ifm-blue">
+        <HilfeKnopf />
+
+        <button onClick={signOut} className="text-sm text-ifm-gray hover:text-ifm-blue">
           Abmelden
         </button>
       </div>

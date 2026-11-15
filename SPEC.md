@@ -218,6 +218,23 @@ Test-Trainers ist sichtbar, und Niko kann ihr Quellpaket laden und eine eigene K
 Der Test-Trainer sieht den Durchlauf, öffnet an seinen Tagen seine Fassung und setzt einen Haken.
 Niko sieht den Haken.
 
+### Baustein 6 – Hilfe und Anleitung (Nikos Wunsch, 15.11.2026)
+
+- Reiter **„Anleitung“** hinter „Freigaben“: Ablauf, jede Seite kurz erklärt, häufige Fragen und zwei
+  Dateien zum Herunterladen: die Einrichtung für Claude und die Paket-Anleitung (`CLAUDE.md`).
+- **„?“** oben rechts auf jeder Seite: Hilfe zur aktuellen Seite und der Ablauf, mit Verweis auf die
+  Anleitung. Beim ersten Besuch ein kurzer Hinweis auf die Anleitung (nur im Browser gemerkt).
+- **Einrichtung für Claude** (`public/claude-einrichtung.md`): Claude fragt zuerst „Claude-App oder
+  VS Code?“ und schreibt dann eine Laien-Anleitung für diesen Weg, mit Probelauf.
+- **Paket-Anleitung** (`scripts/quellpaket-anleitung.md`): neuer Abschnitt für die Arbeit im Chat
+  (Claude-App oder claude.ai), ohne Claude Code.
+- **Annahme (Claude):** „?“ und Anleitung statt einer geführten Tour: leichter aktuell zu halten, stört
+  nicht bei jedem Besuch. Die Texte nennen Knöpfe beim Namen; ein Test prüft, dass es sie im Tool gibt.
+
+**Laien-Test:** Reiter „Anleitung“ öffnen, beide Dateien herunterladen. Auf „Kurstage“ das „?“ öffnen
+und mit Escape schließen. Die Einrichtungs-Datei in der Claude-App einem neuen Chat geben: Claude fragt
+nach App oder VS Code.
+
 ---
 
 ## 5. Nicht im Umfang
