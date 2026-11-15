@@ -2,8 +2,21 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
-## 2026-11-15 · Baustein 7 · Notizen nur als Stichpunkte (Teil 1 eingespielt, Teil 2 wartet auf „ja“)
+## 2026-11-15 · Baustein 7 · Notizen nur als Stichpunkte (eingespielt)
 
+- **Teil 2 eingespielt nach Nikos „ja“** (gelb), vorher zweiter Blick auf Teil 2 und den Code. Er fand
+  eine echte Lücke im Verfahren (nicht in den Daten): Notizen außerhalb einer Folie (auskommentierte Folie,
+  anderes Element) wären weder ersetzt noch von der Leck-Prüfung bemerkt worden. Nachgeprüft: In allen
+  15 Decks und ihren Quellen steht jede Notiz in genau einer Folie, die hochgeladenen Dateien waren
+  sauber. Umgesetzt: Abbruch, wenn im Text mehr `data-notes` stehen als an Folien; Leck-Prüfung liest
+  Kommentare, Vorlagen, Skripte und den Rohtext, sucht auch Notizen aus den Folienquellen, und „sichtbar“
+  ist nur, was zur Folie gehört (Text, Attribute wie Quiz-Antworten, Aktionen). Dabei fiel bei Tag 8 eine
+  Quiz-Antwort auf, die einen Notizsatz wiederholt; der Sync lud dort vorsorglich nichts, bis die Regel
+  „Attribute der Folie sind sichtbar“ ergänzt war. Rückbau von Teil 2 verweigert sich, solange eine
+  Freigabe auf „nur Stichpunkte“ steht. Test um Plan, Aufbauen auf fremder Fassung und deren Quellpaket
+  ergänzt. App wählt im Zweifel die kurze Fassung und zeigt fremde Kurse erst, wenn die eigene Freigabe
+  geladen ist. Danach: Sicherung `backup/2026-11-15_vor_stichpunkte_teil2.json`, Teil 2 eingespielt,
+  Rechte-Tests 7/7, Downloads 184/184, anon ohne Rechte. 87 Tests grün.
 - Stichpunkte für alle 15 H&G-Tage (423 Folien, 1.862 Stichpunkte, 1–5 je Folie, zusammen etwa halb so
   lang wie die Notizen), geschrieben von sechs Sub-Agenten parallel, danach zentral geprüft (Anzahl,
   Titel, Länge ≤ 120 Zeichen, Form, kein ganzer Satz aus der Notiz). Abgelegt im Kursordner
@@ -29,7 +42,7 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   alte Fassungs-Regeln → R21. Rückbau beider Teile im Probelauf: Stand identisch.
 - `npm run pruefen:rechte` überspringt Tests von Migrationen, die noch nicht eingespielt sind
   (`supabase/eingespielt.sql`), statt sie als Fehler zu melden.
-- App (Zweig `baustein-7-stichpunkte`, noch nicht live): Freigaben mit „Notizen: vollständig / nur
+- App: Freigaben mit „Notizen: vollständig / nur
   Stichpunkte“; Kurstage, Notizen und Fassungen wählen bei „nur Stichpunkte“ die kurzen Dateien
   (`pfadeFuer`), Kachel zeigt „Notizen als Stichpunkte“ bzw. „Stichpunkt-Fassung folgt noch“; Hilfe und
   Anleitung ergänzt. 84 Tests grün.
