@@ -2,6 +2,16 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Pflege · Alte Durchläufe gelöscht
+
+- Gelb, Niko: „Ja bitte löschen“ (nie wirklich gepflegt). Nach Sicherung
+  `backup/2026-11-15_vor_durchlaeufe_loeschen.json` und zweitem Blick per Skript mit Vor- und Nachprüfung
+  gelöscht: alle vier Durchläufe („2608 - WEG-Kurs“, „2609 - H&G-Kurs“, „2610 - WEG-Kurs“, „Ohne Namen“)
+  samt 66 Haken-Zeilen, darin 5 Tagesnotizen (kopierte Themenlisten, Niko vorher gezeigt).
+- Unverändert: 4 Kurse, 57 Kurstage (mit den Tagebuch-Themen), Kursfreigabe für den Test-Trainer.
+  Rechte-Tests danach 5/5. Wiederherstellen ginge aus der Sicherung (dabei setzt der Trigger
+  `geaendert_am` auf den Zeitpunkt der Wiederherstellung).
+
 ## 2026-11-15 · Baustein 6 · Hilfe und Anleitung
 
 - Neuer Reiter „Anleitung“ (`src/pages/AnleitungPage.tsx`, Route `/anleitung`): Ablauf, alle Seiten kurz
