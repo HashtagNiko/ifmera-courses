@@ -2,6 +2,22 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Bausteine 2–5 · Gesamttest bestanden, Testdaten entfernt
+
+- Nikos Laien-Gesamttest in vier Teilen mit eigenem Konto und Test-Konto: **passt** (Bausteine 2–5 damit
+  abgeschlossen). Geprüft: Downloads (Trainer, PDF), Fußzeile mit eigenem Namen, Kursfreigabe an den
+  Test-Trainer, eigene Folien-Notiz nur im Cockpit des Test-Trainers, Quellpaket laden, eigene Fassung
+  hochladen, öffnen und an Niko freigeben (bei Niko nur herunterladbar), gemeinsamer Durchlauf (aufnehmen,
+  Plan, Fassung im Plan, „abgehakt von“, gemeinsame Tagesnotiz, Konfliktmeldung bei gleichzeitigem
+  Schreiben, Austreten räumt den Plantag des Ausgetretenen).
+- Aufräumen (gelb, Niko: „aufräumen“): nach Sicherung `backup/2026-11-15_vor_aufraeumen_gesamttest.json`
+  und zweitem Blick per Skript mit Vor- und Nachprüfung gelöscht: zwei Durchläufe „Test gemeinsam“ (samt
+  einem Haken und einem Plantag) und die Folien-Notiz des Test-Trainers. Die Testfassung hat Niko als
+  Test-Trainer in der App gelöscht (so verschwinden auch die Dateien im Bucket). Danach lesend geprüft:
+  4 Durchläufe, 66 Haken wie vor dem Test, keine Fassungen und keine Dateien im Bucket `fassungen`.
+  Die Kursfreigabe „WEG-Kurs → Test-Trainer“ bleibt für spätere Tests.
+- Keine Code-Änderung.
+
 ## 2026-11-15 · Baustein 5 · Gemeinsamer Durchlauf (eingespielt; vorbereitet ab 13.11.)
 
 - **Eingespielt am 15.11.2026 nach Nikos „ja“** (gelber Schritt, inkl. OFFENE-FRAGEN Nr. 23): Sicherung
