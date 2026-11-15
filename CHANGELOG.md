@@ -9,8 +9,13 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   gelöscht: alle vier Durchläufe („2608 - WEG-Kurs“, „2609 - H&G-Kurs“, „2610 - WEG-Kurs“, „Ohne Namen“)
   samt 66 Haken-Zeilen, darin 5 Tagesnotizen (kopierte Themenlisten, Niko vorher gezeigt).
 - Unverändert: 4 Kurse, 57 Kurstage (mit den Tagebuch-Themen), Kursfreigabe für den Test-Trainer.
-  Rechte-Tests danach 5/5. Wiederherstellen ginge aus der Sicherung (dabei setzt der Trigger
-  `geaendert_am` auf den Zeitpunkt der Wiederherstellung).
+  Wiederherstellen ginge aus der Sicherung (dabei setzt der Trigger `geaendert_am` auf den Zeitpunkt
+  der Wiederherstellung).
+- **Korrektur:** Die erste Fassung dieses Eintrags meldete „Rechte-Tests danach 5/5“; tatsächlich waren
+  es 4/5. Test C (`20261113160000_…_test.sql`) lieh sich einen echten Durchlauf von Niko aus und brach
+  ab, als es keinen mehr gab (Verstoß gegen „Tests nutzen nur eigene Daten“). Umgestellt auf einen
+  eigenen Test-Durchlauf mit einem Haken (neu C09b); danach 5/5, Gegenprobe (zu lockere Regel auf
+  `fortschritt`) schlägt bei C31 an. Die Datenbank selbst war nicht betroffen.
 
 ## 2026-11-15 · Baustein 6 · Hilfe und Anleitung
 

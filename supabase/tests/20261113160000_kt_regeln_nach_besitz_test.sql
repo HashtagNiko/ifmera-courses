@@ -47,19 +47,22 @@ select set_config('kt.niko',  (select t.id::text from public.kt_trainer t where 
 select set_config('kt.co',    '00000000-0000-4000-8000-0000000000c1', true);
 select set_config('kt.weg',   (select k.id::text from public.kurse k where k.slug = 'weg'), true);
 select set_config('kt.hg',    (select k.id::text from public.kurse k where k.slug = 'hg'), true);
--- ein Durchlauf von Niko mit einem noch nicht abgehakten Tag, damit C31 an den Regeln scheitert und
--- nicht an der Eindeutigkeit (durchlauf_id, kurstag_id)
-select set_config('kt.niko_durchlauf', (
-  select d.id::text from public.durchlaeufe d
-  where exists (select 1 from public.kurstage t where t.kurs_id = d.kurs_id
-                and not exists (select 1 from public.fortschritt f where f.durchlauf_id = d.id and f.kurstag_id = t.id))
-  limit 1), true);
+-- ein eigener Test-Durchlauf von Niko mit einem Haken und einem noch freien Tag, damit C31 an den Regeln
+-- scheitert und nicht an der Eindeutigkeit (durchlauf_id, kurstag_id). Frueher lieh sich der Test einen
+-- echten Durchlauf aus und scheiterte, als es keinen mehr gab (15.11.2026); Tests nutzen nur eigene Daten.
+insert into public.durchlaeufe (kurs_id, name, besitzer_id)
+values (current_setting('kt.weg')::uuid, 'kt-test Niko vorhanden', current_setting('kt.niko')::uuid);
+select set_config('kt.niko_durchlauf',
+  (select d.id::text from public.durchlaeufe d where d.name = 'kt-test Niko vorhanden'), true);
+insert into public.fortschritt (durchlauf_id, kurstag_id, vermittelt)
+select current_setting('kt.niko_durchlauf')::uuid, t.id, true from public.kurstage t
+where t.kurs_id = current_setting('kt.weg')::uuid order by t.nummer limit 1;
 select set_config('kt.niko_freier_tag', (
   select t.id::text from public.kurstage t
-  where t.kurs_id = (select d.kurs_id from public.durchlaeufe d where d.id = current_setting('kt.niko_durchlauf')::uuid)
+  where t.kurs_id = current_setting('kt.weg')::uuid
     and not exists (select 1 from public.fortschritt f
                     where f.durchlauf_id = current_setting('kt.niko_durchlauf')::uuid and f.kurstag_id = t.id)
-  limit 1), true);
+  order by t.nummer limit 1), true);
 select set_config('kt.weg_tag', (select t.id::text from public.kurstage t
                                   where t.kurs_id = (select id from public.kurse where slug = 'weg') limit 1), true);
 select set_config('kt.hg_tag',  (select t.id::text from public.kurstage t
@@ -135,6 +138,8 @@ begin
   -- neuer Durchlauf und Haken wie bisher
   insert into public.durchlaeufe (kurs_id, name) values (current_setting('kt.weg')::uuid, 'kt-test Niko');
   update public.fortschritt set vermittelt = vermittelt where durchlauf_id = current_setting('kt.niko_durchlauf')::uuid;
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'C09b: Niko kann den Haken in seinem Durchlauf nicht aendern'; end if;
 end
 $$;
 
