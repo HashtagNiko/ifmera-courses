@@ -2,6 +2,30 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Pflege · Uhr-Fehler der WEG-Engine behoben, Decks neu gebaut (OFFENE-FRAGEN Nr. 18, 20)
+
+- Gelber Schritt (Kursordner), Niko: „Ja, bitte bauen“ nach Plan. Vorher Sicherungskopie (lokal, nicht in
+  OneDrive): WEG-Engine, alle `dist`-Ordner (voll und kompakt, beide Kurse), beide „2. Slides“,
+  221 Dateien, 589 MB, Größe geprüft (`backup/2026-11-15_decks_vor_neubau/`).
+- WEG-Engine `10_WEG-Kurs/engine/deck_engine.html`: Zugriffe auf die Uhr `#tmr` abgesichert wie in der
+  H&G-Engine (`tFmt()`, Prüfung auf `null`), 964 → 967 Zeilen, sonst unverändert.
+- Neu gebaut mit Nikos Skripten: alle WEG-Decks (16 voll, 8 kompakt) und H&G Tag 3–15; Teilnehmer-
+  fassungen beider Kurse (alle „OK“); PDF nur für WEG Tag 6 (Lieferung 2.4), die einzige inhaltliche
+  Änderung (Folie 23: „Verzugszins gegenüber Verbrauchern“ → „Gegenüber Verbrauchern“, im PDF geprüft).
+- Ausgeliefert ohne `ausliefern.py`, damit nichts Ungeprüftes mitwandert: Vorher wurde jede Datei in
+  „2. Slides“ (ohne Ordner mit „_“) ihrer byte-gleichen `dist`-Datei zugeordnet (89 von 90), danach genau
+  diese Dateien ersetzt (44 geändert, 46 gleich), dazu WEG Kompakt 3.2 auf Nikos Wunsch (vorher nur ein
+  unsichtbarer Kommentar anders). Danach alle 90 ausgelieferten Dateien byte-gleich mit ihrem Bau;
+  H&G Segment 2 und 4/5 voll sowie „_voll (nicht ausgegeben)“ unberührt.
+- Sync: WEG 16 Trainer, 16 Teilnehmer, 1 PDF, 16 Quellpakete; H&G 13 Trainer, 2 Teilnehmer; WEG kompakt
+  8/8/8; H&G kompakt unverändert. Prüfungen: Quellpakete 44 von 44 byte-gleich (vorher 26),
+  Downloads 154 von 154, Rechte-Tests 5 von 5.
+- Ein Fehler von mir im Chat: WEG Tag 6 als „2.6“ bezeichnet; ausgeliefert wird er als **2.4**
+  („Verwalter, Beirat & Vertragsrecht“). Gebaut und ausgeliefert wurde richtig.
+- `src/lib/folien.engine.test.ts`: verlangt jetzt, dass die echte Engine nicht mehr abbricht (vorher hielt
+  der Test den Fehler fest); Gegenprobe mit dem alten Deck aus der Sicherung schlägt an. 49 Tests grün.
+- Google Drive nicht angefasst (Nikos Schritt).
+
 ## 2026-11-15 · Bausteine 2–5 · Gesamttest bestanden, Testdaten entfernt
 
 - Nikos Laien-Gesamttest in vier Teilen mit eigenem Konto und Test-Konto: **passt** (Bausteine 2–5 damit

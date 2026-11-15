@@ -3,7 +3,9 @@
  * Eigene Notizen im Cockpit, geprueft mit der ECHTEN Engine eines gebauten Decks.
  * Die Decks liegen nicht im Repo; der Test findet sie ueber KURS_WURZEL aus der .env
  * und wird uebersprungen, wenn es den Ordner nicht gibt (etwa auf GitHub).
- * Aufgefallen ist so, dass syncCockpit der Engine an der fehlenden Uhr #tmr abbricht.
+ * Aufgefallen ist so, dass syncCockpit der Engine an der fehlenden Uhr #tmr abbrach (OFFENE-FRAGEN
+ * Nr. 18). Seit dem Neubau vom 15.11.2026 sind beide Engines repariert; der Test verlangt jetzt, dass
+ * nichts mehr abbricht. Die Notizen-Einblendung fängt den Fehler weiter ab, für ältere Kopien.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -63,8 +65,8 @@ for (const pfad of decks) {
     const titelEngine: string[] = w.eval('allSlides.map(titleOf)')
     expect(titelEngine.map((t) => t.replace(/\s+/g, ' ').trim() || 'Folie')).toEqual(folien.map((f) => f.titel))
 
-    // Folie 1: eigene Notiz, formatiert; der bekannte Engine-Fehler wird weitergegeben
-    expect(() => w.eval('syncCockpit()')).toThrow(/textContent/)
+    // Folie 1: eigene Notiz, formatiert; die Engine bricht nicht mehr ab (Uhr #tmr repariert)
+    expect(() => w.eval('syncCockpit()')).not.toThrow()
     expect(notes().innerHTML).toContain('<b>Eigen</b> Test')
     expect(notes().innerHTML).toContain('<li>Punkt</li>')
     expect(aktion().innerHTML).toBe('Eigene Aktion')
@@ -84,7 +86,10 @@ for (const pfad of decks) {
     schalter.dispatchEvent(new w.Event('change'))
     expect(notes().textContent).toBe(folien[0].notiz)
 
-    console.log(dateiname(pfad), 'ok; Engine-Fehler (bekannt):', fehler.length, engineWirft ? '(weitergegeben)' : '')
+    // Kein Abbruch beim Blättern, kein Fehler der Uhr
+    expect(engineWirft).toBe('')
+    expect(fehler.filter((f) => /tmr|textContent/.test(f))).toEqual([])
+    console.log(dateiname(pfad), 'ok; sonstige Meldungen der Engine:', fehler.length)
   }, 30000)
 
   it(`echte Engine, Kann-Folien ausgeblendet: ${dateiname(pfad)}`, async () => {
