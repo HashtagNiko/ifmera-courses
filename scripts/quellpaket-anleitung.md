@@ -1,8 +1,9 @@
 # CLAUDE.md – eigene Fassung eines ifmera-Kurstags
 
-> Anleitung für Claude Code. Dieser Ordner ist das Quellpaket **eines** Kurstags aus dem
-> ifmera Kurs-Tool (courses.shnoozy.top). Wer damit arbeitet, baut daraus seine **eigene Fassung**;
-> das Original des Kursautors bleibt davon unberührt.
+> Anleitung für Claude (Claude Code, die Claude-App oder claude.ai). Dieser Ordner ist das
+> Quellpaket **eines** Kurstags aus dem ifmera Kurs-Tool (courses.shnoozy.top). Wer damit arbeitet,
+> baut daraus seine **eigene Fassung**; das Original des Kursautors bleibt davon unberührt.
+> Ohne Claude Code: siehe Abschnitt „Im Chat (Claude-App oder claude.ai)“ unten.
 
 ## Was hier liegt
 
@@ -43,11 +44,30 @@ Browser; der Knopf „Trainer-Cockpit öffnen“ zeigt Notizen und Aktionen.
 
 ## Fertige Fassung ins Kurs-Tool laden
 
-Im Kurs-Tool beim Kurstag „Eigene Fassung“ öffnen und hochladen:
+Im Kurs-Tool unter „Kurstage“ beim Kurstag auf „⧉ Fassungen“, dann bei „Neue Fassung hochladen“
+(oder bei einer eigenen Fassung „Neue Version hochladen“):
 
 - das gebaute Deck aus `dist/` (HTML) und
 - diesen ganzen Ordner als Zip (damit andere Trainer, denen du die Fassung freigibst, sie wiederum
   bearbeiten können).
+
+## Im Chat (Claude-App oder claude.ai)
+
+Claude Code liest diese Datei von selbst. Im Chat bittet der Trainer dich, sie zu lesen; dann gilt:
+
+1. **Zuerst lesen:** diese Datei und `KURSREGELN.md` (falls vorhanden), dann `build.json`.
+2. **Kannst du Code ausführen** (Dateien entpacken, Python starten)? Dann: Zip entpacken, Änderungen
+   machen, mit `python engine/build.py .` bauen, das Deck auf Fehler prüfen und dem Trainer **zwei
+   Dateien zum Herunterladen** geben: das Deck aus `dist/` und den ganzen Ordner als Zip, mit
+   demselben obersten Ordner wie im erhaltenen Paket.
+3. **Kannst du keinen Code ausführen**, sag das gleich zu Beginn. Ändere dann die Dateien, gib sie
+   zurück und erkläre in einfachen Schritten, wie der Trainer am eigenen Rechner baut (Python 3
+   installieren, im Ordner `python engine/build.py .` ausführen). Oft ist es einfacher, die
+   Code-Ausführung in den Einstellungen der App einzuschalten (bezahltes Abo).
+4. **Weiterarbeiten:** Jede neue Sitzung beginnt mit dem zuletzt zurückgegebenen Zip, nie mit dem
+   alten Paket, sonst gehen Änderungen verloren.
+5. Erkläre dem Trainer am Ende kurz, was du geändert hast, und erinnere ihn an das Hochladen im
+   Kurs-Tool (siehe oben).
 
 Ändert der Kursautor später sein Original, zeigt das Kurs-Tool einen Hinweis und bietet das neue
 Quellpaket an. Dann kann Claude die Änderungen des Originals in diese Fassung übernehmen, ohne die

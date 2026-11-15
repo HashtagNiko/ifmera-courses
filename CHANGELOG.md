@@ -2,6 +2,25 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Baustein 6 · Hilfe und Anleitung
+
+- Neuer Reiter „Anleitung“ (`src/pages/AnleitungPage.tsx`, Route `/anleitung`): Ablauf, alle Seiten kurz
+  erklärt, häufige Fragen, Downloads „Einrichtung für Claude“ (`public/claude-einrichtung.md`) und
+  „Anleitung im Quellpaket“ (dieselbe Datei wie `CLAUDE.md` in jedem Paket, per `?raw` eingebunden).
+- „?“ in der Kopfzeile (`src/components/Hilfe.tsx`): Hilfe zur aktuellen Seite, Ablauf, Verweis auf die
+  Anleitung; Escape, Klick daneben oder „✕ schließen“ schließt. Einmaliger Hinweis „Neu hier?“ (im
+  Browser gemerkt, ohne Speicher kein Hinweis).
+- `public/claude-einrichtung.md`: Anleitung für Claude, die zuerst „Claude-App oder VS Code?“ fragt und
+  dann Schritt für Schritt einrichtet (Python, VS Code mit Claude Code bzw. App mit Code-Ausführung),
+  mit Probelauf vom Quellpaket bis zum Hochladen. Liegt öffentlich (GitHub Pages), enthält nichts
+  Vertrauliches.
+- `scripts/quellpaket-anleitung.md`: Abschnitt „Im Chat (Claude-App oder claude.ai)“; Hochladen-Hinweis
+  korrigiert („⧉ Fassungen“ statt „Eigene Fassung“). Alle 44 Quellpakete neu geladen; Rechte-Tests 5/5,
+  Downloads 154/154.
+- Test `src/components/Hilfe.test.ts` (25 Fälle): Seitenerkennung, Öffnen/Schließen, Hinweis gemerkt, und
+  21 Beschriftungen, die Hilfe und Anleitung nennen, gibt es im Tool wirklich (Gegenprobe: umbenannter
+  Knopf schlägt an). Insgesamt 74 Tests grün.
+
 ## 2026-11-15 · Pflege · Uhr-Fehler der WEG-Engine behoben, Decks neu gebaut (OFFENE-FRAGEN Nr. 18, 20)
 
 - Gelber Schritt (Kursordner), Niko: „Ja, bitte bauen“ nach Plan. Vorher Sicherungskopie (lokal, nicht in
