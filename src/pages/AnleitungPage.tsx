@@ -91,6 +91,10 @@ export default function AnleitungPage() {
               Deine Stufe für diesen Kurs reicht dafür nicht. Notizen gibt es ab „+ eigene Notizen“, Quellen und
               Fassungen ab „+ eigene Kopie bearbeiten“.
             </Frage>
+            <Frage frage="Im Cockpit stehen nur Stichpunkte statt Notizen.">
+              Der Kurs ist dir mit „Notizen: nur Stichpunkte“ freigegeben. Das legt fest, wem der Kurs gehört,
+              unter „Freigaben“.
+            </Frage>
             <Frage frage="Im Schulungsraum ist kein Internet.">
               Lade das Deck vorher unter „Herunterladen: Trainer“ herunter. Die Datei läuft ohne Internet in
               jedem Browser, mit Cockpit und deinen eigenen Notizen.

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Kopfzeile from '../components/Kopfzeile'
 import { folienLesen, notizHtml, type Folie } from '../lib/folien'
-import { deckText, kurstagLaden, type KurstagMitKurs } from '../lib/kurse'
+import { deckText, kurstagLaden, pfadeFuer, type KurstagMitKurs } from '../lib/kurse'
 import { notizLoeschen, notizSpeichern, notizenLaden, type Notiz } from '../lib/notizen'
-import { darfNotizen, meineStufenLaden } from '../lib/trainer'
+import { darfNotizen, meineFreigabenLaden, notizenModus } from '../lib/trainer'
 import { useIch } from '../lib/TrainerContext'
 
 /**
@@ -37,16 +37,17 @@ function NotizenSeite({ tagId }: { tagId: string | undefined }) {
       const t = await kurstagLaden(tagId)
       if (!t) throw new Error('Diesen Kurstag gibt es nicht, oder er ist nicht für dich freigegeben.')
       if (!t.deck_pfad) throw new Error('Zu diesem Tag gibt es kein Deck.')
-      const [html, eigene, stufen] = await Promise.all([
-        deckText(t.deck_pfad),
-        notizenLaden(t.id),
-        meineStufenLaden(ich.id),
-      ])
+      const freigaben = await meineFreigabenLaden(ich.id)
+      const besitzer = t.kurse?.besitzer_id ?? ''
+      // Baustein 7: mit "nur Stichpunkte" ist das Original die Stichpunkt-Fassung
+      const pfad = pfadeFuer(t, notizenModus(besitzer, ich.id, freigaben.get(t.kurs_id))).deck
+      if (!pfad) throw new Error('Zu diesem Tag gibt es die Stichpunkt-Fassung noch nicht.')
+      const [html, eigene] = await Promise.all([deckText(pfad), notizenLaden(t.id)])
       if (!aktiv) return
       setTag(t)
       setFolien(folienLesen(html))
       setNotizen(new Map(eigene.map((n) => [n.folie_schluessel, n])))
-      setDarf(darfNotizen(t.kurse?.besitzer_id ?? '', ich.id, stufen.get(t.kurs_id)))
+      setDarf(darfNotizen(besitzer, ich.id, freigaben.get(t.kurs_id)?.stufe))
     })()
       .catch((e: Error) => aktiv && setFehler(e.message))
       .finally(() => aktiv && setLaedt(false))

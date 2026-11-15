@@ -235,6 +235,33 @@ Niko sieht den Haken.
 und mit Escape schließen. Die Einrichtungs-Datei in der Claude-App einem neuen Chat geben: Claude fragt
 nach App oder VS Code.
 
+### Baustein 7 – Notizen nur als Stichpunkte (Nikos Wunsch, 15.11.2026)
+
+- Ziel: Niko teilt den H&G-Kurs (nicht kompakt), ohne dass der Mitnutzer die ausführlichen
+  Trainer-Notizen sieht. Nikos eigene Decks und Notizen bleiben unverändert.
+- Je Freigabe die Wahl **„Notizen: vollständig“** oder **„Notizen: nur Stichpunkte“**
+  (`kt_kurs_freigaben.notiz_umfang`). Mit Stichpunkten bekommt der Mitnutzer Cockpit, Trainer-Download und
+  Quellpaket nur in der Stichpunkt-Fassung (`<kurs>/trainer-kurz/`, `<kurs>/quellen-kurz/`); die
+  ausführlichen (`trainer/`, `quellen/`) und **fremde Fassungen** sperrt die Datenbank für ihn
+  (fremde Fassungen enthalten ausführliche Notizen). Eigene Fassungen sieht er immer.
+- Die „Aktion“-Zeilen bleiben vollständig (Niko, 15.11.2026). Teilnehmerfassung und PDF enthalten keine
+  Notizen und bleiben gleich.
+- Die Stichpunkte schreibt Claude, je Folie 1–5, aus der Notiz; sie liegen je Deck als JSON im Kursordner
+  (`50_H&G-Kurs/stichpunkte/`, nicht im öffentlichen Repo), mit der Prüfsumme der Original-Notiz. Der
+  Deck-Sync baut daraus die Stichpunkt-Fassungen; ändert sich eine Notiz, steht dort „Stichpunkte
+  folgen.“ (nie die volle Notiz), und der Sync meldet die Folie. Vor jedem Hochladen prüft er, dass kein
+  Satz der Original-Notizen in der kurzen Fassung steht.
+- **Annahmen (Claude):** Gilt zunächst nur für den H&G-Kurs (Feld `stichpunkte` in `kurse.config.json`);
+  in anderen Kursen hat ein Mitnutzer mit „nur Stichpunkte“ kein Trainer-Deck. Wird eine Freigabe von
+  „vollständig“ auf „nur Stichpunkte“ umgestellt, behält der Mitnutzer, was er vorher heruntergeladen
+  hat, und seine eigenen Fassungen, die er aus dem ausführlichen Quellpaket gebaut hat.
+- Umsetzung: `20261115100000_kt_stichpunkte.sql` (hinzufügend), `20261115110000_kt_stichpunkte_regeln.sql`
+  (ersetzt Regeln, gelb), `scripts/stichpunkte.mjs`, Sync, App (Kurstage, Notizen, Fassungen, Freigaben).
+
+**Laien-Test:** Unter „Freigaben“ beim H&G-Kurs dem Test-Trainer „Notizen: nur Stichpunkte“ geben. Als
+Test-Trainer: Kachel zeigt „Notizen als Stichpunkte“, im Cockpit stehen Stichpunkte, der Trainer-Download
+enthält nur Stichpunkte. Als Niko: Cockpit zeigt weiter die ausführlichen Notizen.
+
 ---
 
 ## 5. Nicht im Umfang

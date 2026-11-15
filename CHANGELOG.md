@@ -2,6 +2,51 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-15 · Baustein 7 · Notizen nur als Stichpunkte (eingespielt)
+
+- **Teil 2 eingespielt nach Nikos „ja“** (gelb), vorher zweiter Blick auf Teil 2 und den Code. Er fand
+  eine echte Lücke im Verfahren (nicht in den Daten): Notizen außerhalb einer Folie (auskommentierte Folie,
+  anderes Element) wären weder ersetzt noch von der Leck-Prüfung bemerkt worden. Nachgeprüft: In allen
+  15 Decks und ihren Quellen steht jede Notiz in genau einer Folie, die hochgeladenen Dateien waren
+  sauber. Umgesetzt: Abbruch, wenn im Text mehr `data-notes` stehen als an Folien; Leck-Prüfung liest
+  Kommentare, Vorlagen, Skripte und den Rohtext, sucht auch Notizen aus den Folienquellen, und „sichtbar“
+  ist nur, was zur Folie gehört (Text, Attribute wie Quiz-Antworten, Aktionen). Dabei fiel bei Tag 8 eine
+  Quiz-Antwort auf, die einen Notizsatz wiederholt; der Sync lud dort vorsorglich nichts, bis die Regel
+  „Attribute der Folie sind sichtbar“ ergänzt war. Rückbau von Teil 2 verweigert sich, solange eine
+  Freigabe auf „nur Stichpunkte“ steht. Test um Plan, Aufbauen auf fremder Fassung und deren Quellpaket
+  ergänzt. App wählt im Zweifel die kurze Fassung und zeigt fremde Kurse erst, wenn die eigene Freigabe
+  geladen ist. Danach: Sicherung `backup/2026-11-15_vor_stichpunkte_teil2.json`, Teil 2 eingespielt,
+  Rechte-Tests 7/7, Downloads 184/184, anon ohne Rechte. 87 Tests grün.
+- Stichpunkte für alle 15 H&G-Tage (423 Folien, 1.862 Stichpunkte, 1–5 je Folie, zusammen etwa halb so
+  lang wie die Notizen), geschrieben von sechs Sub-Agenten parallel, danach zentral geprüft (Anzahl,
+  Titel, Länge ≤ 120 Zeichen, Form, kein ganzer Satz aus der Notiz). Abgelegt im Kursordner
+  `50_H&G-Kurs/stichpunkte/` (15 JSON + LIESMICH.md), je Folie mit Prüfsumme der Original-Notiz.
+- `scripts/stichpunkte.mjs`: ersetzt in Deck und Folienquellen nur die `data-notes`-Attribute (über
+  Quelltext-Positionen, Rest Byte für Byte gleich), Cockpit-Stil „Zeilen beibehalten“ nur in der kurzen
+  Fassung, Hinweis in der Paket-Anleitung, Platzhalter „Stichpunkte folgen.“ bei geänderten Notizen,
+  Leck-Prüfung (kein Satz ab 50 Zeichen aus den Notizen, außer er steht ohnehin sichtbar). Tests
+  `scripts/stichpunkte.test.mjs` (6) mit Gegenprobe. `quellpaket.mjs`: Zip mit überschriebenen Dateien.
+- Sync: baut für Kurse mit Feld `stichpunkte` (`kurse.config.json`, nur `hg`) Stichpunkt-Deck und
+  -Quellpaket, prüft auf Lecks, lädt nach `trainer-kurz/` und `quellen-kurz/`. Geladen: 15 + 15 Dateien,
+  39 MB. Probe: Jedes Stichpunkt-Quellpaket, mit Nikos `build.py` gebaut, ergibt byte-genau das
+  Stichpunkt-Deck. `pruefen:downloads` prüft die kurzen Fassungen mit (184 von 184 in Ordnung).
+- Migration `20261115100000_kt_stichpunkte.sql` (hinzufügend, nach Sicherung eingespielt):
+  `kt_kurs_freigaben.notiz_umfang` ('voll'|'stichpunkte', Vorgabe 'voll'), Pfade/Prüfsummen der kurzen
+  Fassungen an `kurstage`, Funktion `kt_kurs_notiz_umfang`. Zweiter Blick vorher: kein Blocker; umgesetzt:
+  Spaltenname eindeutig, Stufe einmal je Aufruf, Selbstprüfung erweitert, Test strenger (inaktiv, S00).
+  Test `20261115100000_kt_stichpunkte_test.sql` (S00–S31), Gegenprobe (Funktion immer „voll“) → S20.
+- Vorbereitet, **nicht eingespielt** (gelb): `20261115110000_kt_stichpunkte_regeln.sql` ersetzt die
+  Leseregel der Deck-Dateien (ausführlich nur mit „voll“, kurze ab gleicher Stufe, unbekannte Ordner
+  gesperrt) und, nach Hinweis des zweiten Blicks, Stufe und Leseregel der Fassungen (fremde Fassungen
+  nur mit „voll“). Test (R00–R51) im Probelauf grün; Gegenproben: ohne Notiz-Prüfung bei `trainer/` → R20,
+  alte Fassungs-Regeln → R21. Rückbau beider Teile im Probelauf: Stand identisch.
+- `npm run pruefen:rechte` überspringt Tests von Migrationen, die noch nicht eingespielt sind
+  (`supabase/eingespielt.sql`), statt sie als Fehler zu melden.
+- App: Freigaben mit „Notizen: vollständig / nur
+  Stichpunkte“; Kurstage, Notizen und Fassungen wählen bei „nur Stichpunkte“ die kurzen Dateien
+  (`pfadeFuer`), Kachel zeigt „Notizen als Stichpunkte“ bzw. „Stichpunkt-Fassung folgt noch“; Hilfe und
+  Anleitung ergänzt. 84 Tests grün.
+
 ## 2026-11-15 · Pflege · Alte Durchläufe gelöscht
 
 - Gelb, Niko: „Ja bitte löschen“ (nie wirklich gepflegt). Nach Sicherung
@@ -48,7 +93,7 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
   H&G-Engine (`tFmt()`, Prüfung auf `null`), 964 → 967 Zeilen, sonst unverändert.
 - Neu gebaut mit Nikos Skripten: alle WEG-Decks (16 voll, 8 kompakt) und H&G Tag 3–15; Teilnehmer-
   fassungen beider Kurse (alle „OK“); PDF nur für WEG Tag 6 (Lieferung 2.4), die einzige inhaltliche
-  Änderung (Folie 23: „Verzugszins gegenüber Verbrauchern“ → „Gegenüber Verbrauchern“, im PDF geprüft).
+  Änderung (ein gestrichenes Wort auf Folie 23, im PDF geprüft).
 - Ausgeliefert ohne `ausliefern.py`, damit nichts Ungeprüftes mitwandert: Vorher wurde jede Datei in
   „2. Slides“ (ohne Ordner mit „_“) ihrer byte-gleichen `dist`-Datei zugeordnet (89 von 90), danach genau
   diese Dateien ersetzt (44 geändert, 46 gleich), dazu WEG Kompakt 3.2 auf Nikos Wunsch (vorher nur ein
