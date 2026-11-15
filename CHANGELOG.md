@@ -19,7 +19,12 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
 - Neue Quellpakete geladen: WEG 16, WEG kompakt 8, H&G kompakt 5 (H&G voll folgt nach Entscheidung zu den
   „Brücken“-Texten). Rechte-Tests 8/8, Downloads 184/184. 97 Tests grün.
 - Gelber Schritt (Niko: „Ja“): Adresse des Co-Trainers in die Einladungsliste des Prüfungstools eingetragen
-  (nach zweitem Blick: Abgleich ohne Groß-/Kleinschreibung, keine Nebenwirkungen). Konto legt Niko an.
+  (nach zweitem Blick: Abgleich ohne Groß-/Kleinschreibung, keine Nebenwirkungen). Niko hat das Konto im
+  Dashboard angelegt (das Prüfungstool legte wie erwartet ein leeres Trainer-Konto an). Danach, nach
+  Sicherung und zweitem Blick, im Kurs-Tool als Co-Trainer freigeschaltet (Rolle trainer, aktiv, ohne
+  Freigabe; die setzt Niko selbst). Rechte-Tests 8/8.
+- Korrektur: In `src/lib/profil.test.ts` stand als Beispiel der Nachname des Co-Trainers (veröffentlicht mit
+  Baustein 8); ersetzt durch „Herr Muster“. In der Git-Geschichte bleibt er stehen.
 
 ## 2026-11-15 · Baustein 8 · Profil (Name und Passwort)
 

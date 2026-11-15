@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe('Profil', () => {
   it('prüft Namen wie die Datenbank', () => {
-    expect(namePruefen('Herr Reuber')).toBeNull()
+    expect(namePruefen('Herr Muster')).toBeNull()
     expect(namePruefen(' X ')).toMatch(/2 bis 60/)
     expect(namePruefen('a'.repeat(61))).toMatch(/2 bis 60/)
     expect(namePruefen('Herr <b>')).toMatch(/spitzen Klammern/)
@@ -57,6 +57,6 @@ describe('Profil', () => {
 
   it('schickt ungültige Namen gar nicht erst an die Datenbank', async () => {
     await expect(anzeigenameSetzen('X')).rejects.toThrow(/2 bis 60/)
-    expect(await anzeigenameSetzen('Herr Reuber')).toBe('Herr Reuber')
+    expect(await anzeigenameSetzen('Herr Muster')).toBe('Herr Muster')
   })
 })
