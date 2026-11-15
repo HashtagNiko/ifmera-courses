@@ -109,9 +109,13 @@ export async function meineFreigabenLaden(ichId: string): Promise<Map<string, Me
   )
 }
 
-/** Welche Notizen bekommt man in diesem Kurs? Besitzer immer die ausführlichen. */
+/**
+ * Welche Notizen bekommt man in diesem Kurs? Besitzer immer die ausführlichen. Ist die eigene Freigabe
+ * (noch) nicht bekannt, lieber die kurze Fassung wählen: Die ausführliche würde die Datenbank dann ohnehin
+ * verweigern, und es gäbe einen kaputten Download statt eines klaren Hinweises.
+ */
 export function notizenModus(besitzerId: string, ichId: string, freigabe: MeineFreigabe | undefined): NotizenModus {
-  return besitzerId === ichId ? 'voll' : (freigabe?.umfang ?? 'voll')
+  return besitzerId === ichId ? 'voll' : (freigabe?.umfang ?? 'stichpunkte')
 }
 
 /** Darf man an diesem Kurs eigene Notizen schreiben? Besitzer immer, sonst ab Stufe "notizen". */
@@ -136,7 +140,7 @@ export async function freigabeSetzen(
   kursId: string,
   trainerId: string,
   stufe: Stufe,
-  umfang: NotizenModus = 'voll',
+  umfang: NotizenModus,
 ): Promise<void> {
   const { data, error } = await supabase
     .from('kt_kurs_freigaben')

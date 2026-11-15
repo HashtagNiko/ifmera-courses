@@ -73,6 +73,35 @@ describe('Stichpunkt-Fassung', () => {
     expect(funde.map((f) => f.datei)).toEqual(expect.arrayContaining(['deck.html', 'x.md']))
   })
 
+  it('Notiz außerhalb einer Folie (auskommentiert, anderes Element): Abbruch statt Durchrutschen', () => {
+    const kommentiert = deck.replace('</div>', `<!-- <section class="slide" data-notes="${esc(N3)}"></section> --></div>`)
+    expect(() => notizenErsetzen(kommentiert, stichpunkte)).toThrow(/ausserhalb einer Folie/)
+    const anderesElement = deck.replace('</div>', `<div data-notes="${esc(N3)}"></div></div>`)
+    expect(() => notizenErsetzen(anderesElement, stichpunkte)).toThrow(/ausserhalb einer Folie/)
+  })
+
+  it('Leck-Prüfung findet Notizen auch in Kommentaren, Skripten und verschlüsselt', () => {
+    const kurz = kurzDeck(deck, stichpunkte).html
+    const satz = N1.split('. ')[0] + '.'
+    for (const versteckt of [`<!-- ${satz} -->`, `<script>var x = "${satz}"</script>`, `<p>${esc(satz).replace(/ /g, '&#32;')}</p>`]) {
+      const mitLeck = kurz.replace('</body>', `${versteckt}</body>`)
+      expect(leckPruefen(deck, [{ name: 'deck.html', inhalt: mitLeck }]).length, versteckt).toBeGreaterThan(0)
+    }
+    // Notiz nur in einer Folienquelle (weitereNotizen) wird ebenfalls gesucht
+    const nurQuelle = 'Diese Bemerkung steht nur in der Folienquelle und nirgends sonst im fertigen Deck.'
+    expect(leckPruefen(deck, [{ name: 'x.html', inhalt: `<p>${nurQuelle}</p>` }], [nurQuelle]).length).toBe(1)
+  })
+
+  it('Satz, der als Quiz-Antwort an der Folie steht (Attribut), gilt nicht als Leck; im Skript schon', () => {
+    const satz = 'Die richtige Antwort lautet zehn Jahre, weil die Unterlagen steuerlich relevant sind.'
+    const folie = `<section class="slide" data-notes="${satz}"><h2 class="folientitel">Quiz</h2><button data-a="${satz}">?</button></section>`
+    const d = engine.replace('__SLIDES__', folie)
+    expect(leckPruefen(d, [{ name: 'd.html', inhalt: kurzDeck(d, { folien: [] }).html }])).toEqual([])
+    const imSkript = engine.replace('__SLIDES__', `<section class="slide" data-notes="${satz}"><h2 class="folientitel">Quiz</h2></section>`)
+    const mitSkript = kurzDeck(imSkript, { folien: [] }).html.replace('</body>', `<script>"${satz}"</script></body>`)
+    expect(leckPruefen(imSkript, [{ name: 'd.html', inhalt: mitSkript }]).length).toBe(1)
+  })
+
   it('Satz, der ohnehin sichtbar auf einer Folie steht, gilt nicht als Leck', () => {
     const satz = 'Dieser Satz steht sowohl auf der Folie als auch in der Notiz und ist lang genug.'
     const d = engine.replace('__SLIDES__', `<section class="slide" data-notes="${satz}"><h2 class="folientitel">A</h2><p>${satz}</p></section>`)

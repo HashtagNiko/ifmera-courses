@@ -8,6 +8,16 @@ begin;
 
 set local lock_timeout = '3s';
 
+-- Nicht zuruecknehmen, solange Mitnutzer auf "nur Stichpunkte" stehen: Sie saehen danach die
+-- ausfuehrlichen Notizen, waehrend die App weiter "Notizen als Stichpunkte" zeigt.
+do $$
+begin
+  if exists (select 1 from public.kt_kurs_freigaben where notiz_umfang = 'stichpunkte') then
+    raise exception 'KT-RSR00: Es gibt Freigaben mit "nur Stichpunkte". Erst auf "vollstaendig" stellen oder entfernen.';
+  end if;
+end
+$$;
+
 drop policy if exists "kt decks lesen" on storage.objects;
 create policy "kt decks lesen" on storage.objects
   for select to authenticated

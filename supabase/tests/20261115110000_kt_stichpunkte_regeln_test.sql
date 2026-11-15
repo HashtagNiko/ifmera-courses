@@ -46,11 +46,23 @@ values (current_setting('kt.niko')::uuid,
         (select t.id from public.kurstage t where t.kurs_id = (select id from public.kurse where slug = 'weg') and t.art = 'kurstag' order by t.nummer limit 1),
         'kt-test Nikos Fassung');
 select set_config('kt.f_niko', (select f.id::text from public.kt_deck_fassungen f where f.titel = 'kt-test Nikos Fassung'), true);
+-- an Kurz sogar mit Stufe "fassung" (darf darauf aufbauen), damit R23 etwas beweist
 insert into public.kt_fassung_freigaben (fassung_id, trainer_id, stufe) values
   (current_setting('kt.f_niko')::uuid, '00000000-0000-4000-8000-0000000000a1', 'nutzen'),
-  (current_setting('kt.f_niko')::uuid, '00000000-0000-4000-8000-0000000000a2', 'nutzen');
-insert into storage.objects (bucket_id, name, metadata)
-values ('fassungen', current_setting('kt.niko') || '/' || current_setting('kt.f_niko') || '/deck.html', '{"size": 1}');
+  (current_setting('kt.f_niko')::uuid, '00000000-0000-4000-8000-0000000000a2', 'fassung');
+insert into storage.objects (bucket_id, name, metadata) values
+  ('fassungen', current_setting('kt.niko') || '/' || current_setting('kt.f_niko') || '/deck.html',   '{"size": 1}'),
+  ('fassungen', current_setting('kt.niko') || '/' || current_setting('kt.f_niko') || '/quellen.zip', '{"size": 1}');
+
+-- Gemeinsamer Durchlauf: Niko haelt Tag 1 mit seiner Fassung, Kurz ist dabei
+insert into public.durchlaeufe (kurs_id, name, besitzer_id)
+values ((select id from public.kurse where slug = 'weg'), 'kt-test gemeinsam', current_setting('kt.niko')::uuid);
+insert into public.kt_durchlauf_trainer (durchlauf_id, trainer_id)
+values ((select id from public.durchlaeufe where name = 'kt-test gemeinsam'), '00000000-0000-4000-8000-0000000000a2');
+insert into public.kt_durchlauf_tage (durchlauf_id, kurstag_id, trainer_id, fassung_id)
+select d.id, f.kurstag_id, current_setting('kt.niko')::uuid, f.id
+from public.durchlaeufe d, public.kt_deck_fassungen f
+where d.name = 'kt-test gemeinsam' and f.id = current_setting('kt.f_niko')::uuid;
 
 -- Und eine eigene Fassung von Kurz (die er immer sieht)
 insert into public.kt_deck_fassungen (besitzer_id, kurstag_id, titel)
@@ -118,8 +130,18 @@ begin
     raise exception 'R21: Kurz sieht Fassungen %', pg_temp.fassungen();
   end if;
   if pg_temp.fassungsdateien() <> 0 or public.kt_fassung_stufe(current_setting('kt.f_niko')::uuid) is not null then
-    raise exception 'R22: Kurz kommt an die fremde Fassung';
+    raise exception 'R22: Kurz kommt an die fremde Fassung (Freigabe, Plan oder Quellpaket)';
   end if;
+  -- auf der fremden Fassung aufbauen (sie ist ihm mit "fassung" freigegeben): verweigert
+  begin
+    insert into public.kt_deck_fassungen (besitzer_id, kurstag_id, titel, grundlage_art, grundlage_fassung_id)
+    select '00000000-0000-4000-8000-0000000000a2', f.kurstag_id, 'kt-test Kopie der fremden', 'fassung', f.id
+    from public.kt_deck_fassungen f where f.id = current_setting('kt.f_niko')::uuid;
+    if exists (select 1 from public.kt_deck_fassungen where titel = 'kt-test Kopie der fremden') then
+      raise exception 'R23: Kurz konnte auf einer fremden Fassung aufbauen';
+    end if;
+  exception when insufficient_privilege then null;
+  end;
 end
 $$;
 reset role;

@@ -36,6 +36,8 @@ export default function DashboardPage() {
   const [namen, setNamen] = useState<Map<string, string>>(new Map())
 
   const [freigaben, setFreigaben] = useState<Map<string, MeineFreigabe>>(new Map())
+  // Erst wenn die eigene Freigabe bekannt ist, stehen bei fremden Kursen die richtigen Dateien fest
+  const [freigabenGeladen, setFreigabenGeladen] = useState(false)
   const [fassungsZahl, setFassungsZahl] = useState<Map<string, number>>(new Map())
 
   // Wie viele Fassungen man zu jedem Tag sehen darf (eigene und freigegebene)
@@ -54,6 +56,7 @@ export default function DashboardPage() {
     meineFreigabenLaden(ich.id)
       .then(setFreigaben)
       .catch(() => setFreigaben(new Map()))
+      .finally(() => setFreigabenGeladen(true))
   }, [ich.id])
 
   useEffect(() => {
@@ -154,7 +157,9 @@ export default function DashboardPage() {
           </p>
         )}
 
-        {segmente.map((seg) => (
+        {fremderKurs && !freigabenGeladen && <p className="text-sm text-ifm-gray">Lädt …</p>}
+
+        {(!fremderKurs || freigabenGeladen) && segmente.map((seg) => (
           <section key={seg} className="mb-8">
             <h2 className="text-sm font-bold uppercase tracking-wide text-ifm-gray mb-3">
               {segmentUeberschrift(tage, seg)}

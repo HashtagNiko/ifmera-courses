@@ -72,7 +72,15 @@ export function notizenErsetzen(html, stichpunkte) {
   const folien = folienLesen(html)
   const ersetzungen = []
   const ohne = []
+  // Jede data-notes-Angabe im Text muss eine Folie sein, deren Notiz wir ersetzen. Steht eine woanders
+  // (auskommentierte Folie, anderes Element, doppelt), lieber abbrechen als sie durchrutschen lassen.
+  const roh = (html.match(/data-notes\s*=/gi) ?? []).length
+  const gefunden = folien.filter((f) => f.start !== null).length
+  if (roh !== gefunden) {
+    throw new Error(`${roh} data-notes im Text, aber ${gefunden} an Folien: Notiz ausserhalb einer Folie (Kommentar?)`)
+  }
   folien.forEach((f, i) => {
+    if (f.notiz !== null && f.notiz.trim() && f.start === null) throw new Error(`Folie ${i + 1}: Notiz ohne Lage im Text`)
     if (f.start === null || f.notiz === null) return // keine Notiz an dieser Folie
     let neu = karte.get(`${f.titel}\u0000${sha256(f.notiz)}`)
     if (neu === undefined) {
@@ -125,20 +133,55 @@ export function kurzQuellpaket(plan, stichpunkte, lesen) {
   const zeilen = anleitung.split('\n')
   // Hinweis nach der Überschrift einfügen
   const texte = { ...plan.texte, 'CLAUDE.md': [zeilen[0], '', HINWEIS_PAKET.trimEnd(), ...zeilen.slice(1)].join('\n') }
-  const pruefsumme = sha256(JSON.stringify({ basis: plan.pruefsumme, stichpunkte: sha256(JSON.stringify(stichpunkte)), version: 1 }))
+  // version 2: strengere Pruefungen (15.11.2026); erzwingt einmal neue Pakete
+  const pruefsumme = sha256(JSON.stringify({ basis: plan.pruefsumme, stichpunkte: sha256(JSON.stringify(stichpunkte)), version: 2 }))
   return { plan: { ...plan, texte, ueberschrieben, pruefsumme }, folien, ohne }
 }
 
-/** Entschlüsselter Text eines HTML: sichtbarer Text plus alle Attributwerte (optional ohne data-notes). */
-function htmlText(html, { ohneNotizen = false } = {}) {
-  const doc = new JSDOM(html).window.document
+/**
+ * Alles Lesbare eines HTML: sichtbarer Text, alle Attributwerte, Kommentare und Vorlagen (template),
+ * dazu der rohe Text und eine einfach entschlüsselte Fassung davon. So fällt eine Notiz auch auf, wenn
+ * sie in einem Kommentar oder anders verschlüsselt im Quelltext steht.
+ */
+function allesLesbare(html) {
+  const dom = new JSDOM(html)
+  const doc = dom.window.document
   const teile = [doc.documentElement.textContent ?? '']
-  for (const el of doc.querySelectorAll('*')) {
-    for (const a of Array.from(el.attributes)) {
-      if (ohneNotizen && a.name === 'data-notes') continue
-      teile.push(a.value)
+  for (const el of doc.querySelectorAll('*')) for (const a of Array.from(el.attributes)) teile.push(a.value)
+  for (const t of doc.querySelectorAll('template')) teile.push(t.innerHTML)
+  const iter = doc.createNodeIterator(doc, dom.window.NodeFilter.SHOW_COMMENT)
+  for (let k = iter.nextNode(); k; k = iter.nextNode()) teile.push(k.nodeValue ?? '')
+  teile.push(html, entschluesseln(html))
+  return teile.join(' ').replace(/\s+/g, ' ')
+}
+
+function entschluesseln(text) {
+  return text
+    .replace(/&#10;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+/**
+ * Was ohnehin zur Folie gehört: ihr Text (ohne Skripte und Stile) und die Werte ihrer Attribute, etwa
+ * aufklappbare Quiz-Antworten (data-a), außer den Notizen; dazu die Aktionen. Was außerhalb der Folien
+ * steht (Engine, Skripte), zählt nicht als sichtbar.
+ */
+function sichtbarerText(html) {
+  const doc = new JSDOM(html).window.document
+  const teile = []
+  for (const folie of doc.querySelectorAll('.slide')) {
+    const kopie = folie.cloneNode(true)
+    kopie.querySelectorAll('script,style,template').forEach((x) => x.remove())
+    teile.push(kopie.textContent ?? '')
+    for (const el of [kopie, ...kopie.querySelectorAll('*')]) {
+      for (const a of Array.from(el.attributes)) if (a.name !== 'data-notes') teile.push(a.value)
     }
   }
+  for (const el of doc.querySelectorAll('[data-aktion]')) teile.push(el.getAttribute('data-aktion') ?? '')
   return teile.join(' ').replace(/\s+/g, ' ')
 }
 
@@ -151,17 +194,18 @@ function saetze(text) {
 }
 
 /**
- * Prüft, dass kein Satz der Original-Notizen (ab 50 Zeichen) in den kurzen Fassungen steht. Sätze, die
- * ohnehin sichtbar sind (Folientext, Aktion, andere Attribute), zählen nicht. Rückgabe: gefundene Sätze.
- * `kurz` ist eine Liste von { name, inhalt }; HTML wird entschlüsselt, anderes als Text gelesen.
+ * Prüft, dass kein Satz der Original-Notizen (ab 50 Zeichen) in den kurzen Fassungen steht, auch nicht in
+ * Kommentaren oder verschlüsselt. Sätze, die ohnehin auf einer Folie oder in einer Aktion stehen, zählen
+ * nicht. `weitereNotizen`: Notizen aus den Folienquellen (falls dort mehr steht als im Deck).
+ * `kurz` ist eine Liste von { name, inhalt }. Rückgabe: gefundene Sätze.
  */
-export function leckPruefen(originalHtml, kurz) {
-  const original = folienLesen(originalHtml)
-  const sichtbar = htmlText(originalHtml, { ohneNotizen: true })
-  const geheim = [...new Set(original.flatMap((f) => saetze(f.notiz ?? '')))].filter((s) => !sichtbar.includes(s))
+export function leckPruefen(originalHtml, kurz, weitereNotizen = []) {
+  const notizen = [...folienLesen(originalHtml).map((f) => f.notiz ?? ''), ...weitereNotizen]
+  const sichtbar = sichtbarerText(originalHtml)
+  const geheim = [...new Set(notizen.flatMap((n) => saetze(n)))].filter((s) => !sichtbar.includes(s))
   const funde = []
   for (const k of kurz) {
-    const text = /\.html?$/i.test(k.name) ? htmlText(k.inhalt) : k.inhalt.replace(/\s+/g, ' ')
+    const text = /\.html?$/i.test(k.name) ? allesLesbare(k.inhalt) : `${k.inhalt} ${entschluesseln(k.inhalt)}`.replace(/\s+/g, ' ')
     for (const s of geheim) if (text.includes(s)) funde.push({ datei: k.name, satz: s.slice(0, 60) })
   }
   return funde

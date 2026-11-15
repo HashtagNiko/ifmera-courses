@@ -32,6 +32,7 @@ describe('Stichpunkt-Fassung in der App', () => {
     expect(notizenModus('niko', 'niko', { stufe: 'nutzen', umfang: 'stichpunkte' })).toBe('voll')
     expect(notizenModus('niko', 'co', { stufe: 'fassung', umfang: 'stichpunkte' })).toBe('stichpunkte')
     expect(notizenModus('niko', 'co', { stufe: 'fassung', umfang: 'voll' })).toBe('voll')
-    expect(notizenModus('niko', 'co', undefined)).toBe('voll')
+    // unbekannte Freigabe: im Zweifel die kurze Fassung
+    expect(notizenModus('niko', 'co', undefined)).toBe('stichpunkte')
   })
 })

@@ -39,7 +39,7 @@ import { createInterface } from 'node:readline'
 import { createClient } from '@supabase/supabase-js'
 import JSZip from 'jszip'
 import { kursregelnLesen, quellpaketPlanen, quellpaketZippen } from './quellpaket.mjs'
-import { kurzDeck, kurzQuellpaket, leckPruefen } from './stichpunkte.mjs'
+import { folienLesen, kurzDeck, kurzQuellpaket, leckPruefen } from './stichpunkte.mjs'
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const env = ladeEnv(join(WURZEL, '.env'))
@@ -196,7 +196,13 @@ async function synchronisiereKurs(kurs) {
           paket: null,
         }
         kurz.deck.neu = ERZWINGEN || alt.trainer_kurz_hash !== kurz.deck.datei.hash
-        const leck = leckPruefen(original, [{ name: 'deck.html', inhalt: kd.html }])
+        // Notizen auch aus den Folienquellen, falls dort mehr steht als im fertigen Deck
+        const quellNotizen = paket
+          ? paket.plan.dateien
+              .filter((d) => d.ziel.startsWith('slides/'))
+              .flatMap((d) => folienLesen(readFileSync(d.quelle, 'utf8')).map((f) => f.notiz ?? ''))
+          : []
+        const leck = leckPruefen(original, [{ name: 'deck.html', inhalt: kd.html }], quellNotizen)
         if (leck.length) throw new Error(`Leck-Pruefung Deck: ${leck.length} Satz/Saetze der Original-Notizen gefunden`)
         if (paket) {
           const kp = kurzQuellpaket(paket.plan, sp, readFileSync)
@@ -214,7 +220,7 @@ async function synchronisiereKurs(kurs) {
             for (const [name, e] of Object.entries(inhalt.files)) {
               if (!e.dir && /\.(html?|md|json|py|txt|css|js)$/i.test(name)) texte.push({ name, inhalt: await e.async('string') })
             }
-            const leckPaket = leckPruefen(original, texte)
+            const leckPaket = leckPruefen(original, texte, quellNotizen)
             if (leckPaket.length) throw new Error(`Leck-Pruefung Quellpaket: ${leckPaket.length} Satz/Saetze gefunden (${leckPaket[0].datei})`)
             kurz.paket.groesse = kurz.paket.zip.length
           }
