@@ -23,6 +23,7 @@ export default function Kopfzeile({ titel }: { titel: string }) {
           <Reiter zu="/kurstage">Kurstage</Reiter>
           <Reiter zu="/tagebuch">Tagebuch</Reiter>
           <Reiter zu="/freigaben">Freigaben</Reiter>
+          <Reiter zu="/eigene-kurse">Eigene Kurse</Reiter>
           <Reiter zu="/anleitung">Anleitung</Reiter>
         </nav>
 

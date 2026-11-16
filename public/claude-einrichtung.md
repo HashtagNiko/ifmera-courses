@@ -13,6 +13,11 @@ hochladen. Das Original bleibt immer unverändert; die eigene Fassung sieht nur 
 Im Quellpaket liegt eine eigene Anleitung (`CLAUDE.md`) und die Gestaltungsregeln (`KURSREGELN.md`).
 Für die eigentliche Arbeit am Deck gelten die; diese Datei hier ist nur für die Einrichtung.
 
+**Eigener Kurs:** Jeder Trainer kann im Tool unter „Eigene Kurse“ auch einen ganz eigenen Kurs anlegen.
+Dafür gibt es dort das **Startpaket** (Zip) mit eigener Anleitung für dich (`CLAUDE.md`): planen, je
+Kurstag ein Ordner, bauen, hochladen. Die Einrichtung ist dieselbe wie hier beschrieben; der Probelauf
+geht dann auch mit dem Startpaket statt mit einem Quellpaket.
+
 ## Deine Aufgabe
 
 1. **Stell zuerst genau eine Frage** und warte auf die Antwort:
@@ -63,6 +68,9 @@ Erkläre dem Trainer diese Ordnung und halte dich selbst daran:
   Ordner daneben entpacken (`…_neu`), Änderungen übernehmen, hochladen, `…_neu` löschen, im Tool
   „Ist erledigt“ klicken.
 - Die genaue Arbeitsweise steht in der `CLAUDE.md` jedes Quellpakets (Abschnitt „Ablage und Ablauf“).
+- Eigene Kurse liegen daneben in einem eigenen Hauptordner, zum Beispiel `Dokumente\ifmera-Kurse`, darin
+  je Kurs das entpackte Startpaket (nach dem Kurs benannt). Wie es darin weitergeht, steht in dessen
+  `CLAUDE.md`.
 
 ## Weg A: Claude-App (Windows) oder claude.ai im Browser
 

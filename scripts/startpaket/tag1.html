@@ -1,0 +1,53 @@
+  <!-- ══════════════════════════════════════════════════════════════════
+       BEISPIEL aus dem Startpaket des ifmera Kurs-Tools
+       Vier erfundene Folien, die zeigen, wie ein Deck aufgebaut ist.
+       Für einen echten Kurstag diese Datei durch die eigenen Folien ersetzen.
+       ══════════════════════════════════════════════════════════════════ -->
+
+  <!-- 1 · Titel -->
+  <section class="slide dark" data-topic="Rahmen" data-aktion="Begrüßen und den Tag kurz einordnen." data-notes="Hier steht, was der Trainer sagt: in ganzen Sätzen, so wie er sie im Kurs sprechen würde. Die Notiz erscheint nur im Trainer-Cockpit, nie auf der Folie und nie in der Teilnehmerfassung." data-bruecke="Bevor wir einsteigen: So ist eine Folie aufgebaut.">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <img src="data:image/png;base64,{{LOGO}}" alt="ifmera academy" style="width:200px;margin-bottom:40px">
+      <h1 style="font-size:50px;color:var(--lemon)">Titel des Kurses</h1>
+      <p style="margin-top:18px;font-size:21px;color:rgba(250,245,235,.9)">Tag 1 von 3 · Thema des Tages</p>
+      <p style="margin-top:10px;font-size:17px;color:rgba(250,245,235,.6)">Trainer: Vorname Nachname</p>
+    </div>
+    <div class="foot"><span>© ifmera academy GmbH | Herr Muster</span><span class="pagenum"></span></div>
+  </section>
+
+  <!-- 2 · Inhalt mit drei Karten und Merke-Kasten -->
+  <section class="slide" data-topic="Aufbau" data-aktion="Die drei Karten nacheinander zeigen und dabei das Cockpit offen haben." data-notes="Jede Folie hat drei Ebenen. Die Folie selbst zeigt den Teilnehmern die Kernaussage und die Details. Die Notiz ist der Sprechtext für den Trainer. Aktion und Brücke sagen, was der Trainer tut und mit welchem Satz er zur nächsten Folie überleitet." data-bruecke="Prüfen wir gleich, ob das hängen geblieben ist.">
+    <div class="badge">Tag 1 von 3 · Thema des Tages</div>
+    <h2 class="folientitel">So ist eine Folie aufgebaut</h2>
+    <div class="prinzip-grid">
+      <div class="prinzip"><h3>Folie</h3><p>Was die Teilnehmer sehen: ein Titel, die <b>Kernaussage</b> und die Details in Karten darunter.</p></div>
+      <div class="prinzip"><h3>Notiz</h3><p>Was der Trainer sagt. Steht im <b>Trainer-Cockpit</b>, nie auf der Folie.</p></div>
+      <div class="prinzip"><h3>Aktion und Brücke</h3><p>Was der Trainer tut, und der <b>Satz zur nächsten Folie</b>. Ebenfalls nur im Cockpit.</p></div>
+    </div>
+    <div class="merkezeile"><b>Merke:</b> Ein Thema pro Folie. Die Kernaussage steht sichtbar, die Einzelheiten in Karten darunter.</div>
+    <img class="mark" src="data:image/png;base64,{{MARK}}" alt="">
+    <div class="foot"><span>© ifmera academy GmbH | Herr Muster</span><span class="pagenum"></span></div>
+  </section>
+
+  <!-- 3 · Quiz -->
+  <section class="slide" data-topic="Aufbau" data-aktion="Gruppe abstimmen lassen, dann die gewählte Antwort anklicken." data-notes="Eine kurze Frage an die Gruppe. Erst abstimmen lassen, dann klicken: Die richtige Antwort wird grün, darunter erscheint die Erklärung." data-bruecke="Damit sind wir am Ende des Beispiels.">
+    <div class="badge">Tag 1 von 3 · Thema des Tages</div>
+    <h2 class="folientitel">Kurze Frage an die Gruppe</h2>
+    <div class="interakt">
+      <button class="quiz-opt" data-q="beispiel1" data-ok="0" onclick="quiz(this)"><span class="buchst">A</span>Die Notizen stehen klein unten auf der Folie.</button>
+      <button class="quiz-opt" data-q="beispiel1" data-ok="1" onclick="quiz(this)"><span class="buchst">B</span>Die Notizen stehen nur im Trainer-Cockpit.</button>
+      <button class="quiz-opt" data-q="beispiel1" data-ok="0" onclick="quiz(this)"><span class="buchst">C</span>Die Notizen stehen in einer eigenen Datei.</button>
+      <div class="feedback" id="fb-beispiel1"><b>Richtig ist B.</b> Notizen, Aktionen und Brücken stehen an der Folie und erscheinen nur im Cockpit; die Teilnehmerfassung enthält sie nicht.</div>
+    </div>
+    <img class="mark" src="data:image/png;base64,{{MARK}}" alt="">
+    <div class="foot"><span>© ifmera academy GmbH | Herr Muster</span><span class="pagenum"></span></div>
+  </section>
+
+  <!-- 4 · Abschluss -->
+  <section class="slide dark" data-topic="Rahmen" data-aktion="Offene Fragen sammeln." data-notes="Zum Abschluss die wichtigsten Punkte des Tages zusammenfassen und Fragen beantworten.">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <h1 style="font-size:46px;color:var(--lemon)">Rückblick &amp; Q&amp;A</h1>
+      <p style="margin-top:18px;font-size:21px;color:rgba(250,245,235,.9)">Was nehmt ihr heute mit?</p>
+    </div>
+    <div class="foot"><span>© ifmera academy GmbH | Herr Muster</span><span class="pagenum"></span></div>
+  </section>

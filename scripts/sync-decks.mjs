@@ -40,6 +40,7 @@ import { createClient } from '@supabase/supabase-js'
 import JSZip from 'jszip'
 import { kursregelnLesen, quellpaketPlanen, quellpaketZippen } from './quellpaket.mjs'
 import { folienLesen, kurzDeck, kurzQuellpaket, leckPruefen } from './stichpunkte.mjs'
+import { startpaketAbgleichen } from './startpaket.mjs'
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const env = ladeEnv(join(WURZEL, '.env'))
@@ -94,6 +95,26 @@ const supabase = createClient(SUPABASE_URL, ANON_KEY, {
 if (await anmelden()) {
   for (const kurs of kurse) {
     await synchronisiereKurs(kurs)
+  }
+  // Startpaket fuer eigene Kurse (Baustein 10); bei --kurs nicht, der Lauf gilt dann nur einem Kurs
+  if (!NUR_KURS) await startpaketSynchronisieren()
+}
+
+/** Laedt das Startpaket in den Bucket "kt-vorlagen", wenn es sich geaendert hat. */
+async function startpaketSynchronisieren() {
+  console.log('\n[startpaket] Startpaket fuer eigene Kurse')
+  try {
+    const stand = await startpaketAbgleichen(supabase, KURS_WURZEL, { trocken: TROCKEN })
+    console.log(
+      stand === 'gleich'
+        ? '  unveraendert'
+        : stand === 'probelauf'
+          ? '  Probelauf: wuerde neu hochgeladen'
+          : '  neu hochgeladen -> kt-vorlagen/startpaket.zip',
+    )
+  } catch (e) {
+    console.error(`  ${e.message}`)
+    process.exitCode = 1
   }
 }
 

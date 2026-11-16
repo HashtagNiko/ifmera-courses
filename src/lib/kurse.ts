@@ -61,11 +61,13 @@ export interface Kurs {
   name: string
   /** Trainer, dem der Kurs gehört (kt_trainer.id) */
   besitzer_id: string
+  /** im Tool angelegt und gepflegt (Baustein 10); Kurse aus dem Deck-Sync: false */
+  angelegt_im_tool?: boolean
 }
 
 /** Alle Kurse, die der Angemeldete sehen darf: eigene und freigegebene. */
 export async function kurseLaden(): Promise<Kurs[]> {
-  const { data, error } = await supabase.from('kurse').select('id, slug, name, besitzer_id').order('name')
+  const { data, error } = await supabase.from('kurse').select('id, slug, name, besitzer_id, angelegt_im_tool').order('name')
   if (error) throw new Error(error.message)
   return (data ?? []) as Kurs[]
 }
@@ -169,7 +171,8 @@ export async function kurstagLaden(id: string): Promise<KurstagMitKurs | null> {
   return data as KurstagMitKurs | null
 }
 
-export type Bucket = 'decks' | 'fassungen'
+/** decks: Kurse; fassungen: eigene Fassungen (Baustein 4); kt-vorlagen: Startpaket (Baustein 10) */
+export type Bucket = 'decks' | 'fassungen' | 'kt-vorlagen'
 
 /** Holt eine Datei aus einem privaten Bucket, am Cache vorbei (siehe deckLaden). */
 async function ausDemBucket(pfad: string, bucket: Bucket = 'decks'): Promise<Response> {

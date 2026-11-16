@@ -8,6 +8,8 @@ import NotizenPage from './pages/NotizenPage'
 import FassungenPage from './pages/FassungenPage'
 import AnleitungPage from './pages/AnleitungPage'
 import ProfilPage from './pages/ProfilPage'
+import EigeneKursePage from './pages/EigeneKursePage'
+import KursBearbeitenPage from './pages/KursBearbeitenPage'
 
 export default function App() {
   return (
@@ -24,6 +26,8 @@ export default function App() {
         <Route path="fassungen/:tagId" element={<FassungenPage />} />
         <Route path="anleitung" element={<AnleitungPage />} />
         <Route path="profil" element={<ProfilPage />} />
+        <Route path="eigene-kurse" element={<EigeneKursePage />} />
+        <Route path="eigene-kurse/:kursId" element={<KursBearbeitenPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

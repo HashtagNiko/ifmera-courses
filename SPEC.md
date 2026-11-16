@@ -296,6 +296,47 @@ Passwort ändern, abmelden, mit dem neuen Passwort anmelden.
 **Laien-Test:** Als Test-Trainer bei einer Fassung „Teilnehmer herunterladen“: Datei öffnet sich ohne
 Cockpit-Knopf, mit dem eigenen Namen in der Fußzeile.
 
+### Baustein 10 – Eigene Kurse im Tool (Nikos Wunsch, 16.11.2026)
+
+Jeder aktive Trainer legt im Tool eigene Kurse an (Niko: „a) jeder Trainer“) und baut sie mit Claude aus
+einem Startpaket. Was er baut, gehört ihm; andere sehen es nur per Freigabe, auch der Admin.
+
+- **Seite „Eigene Kurse“** (Reiter oben): „Startpaket herunterladen“, „Kurs anlegen“, Liste der eigenen
+  Kurse mit „Kurs bearbeiten“. **„Kurs bearbeiten“:** Name, Kurstage („Tag anlegen“: Art, Nummer, Titel,
+  optional Abschnitt), je Tag „Dateien hochladen“ (Deck aus `dist/`, Tagesordner als Zip, optional PDF),
+  „Ändern“, „Löschen“, „Kurs löschen“. Die Teilnehmerfassung macht das Tool beim Hochladen (wie Baustein 9);
+  bleibt darin etwas Trainerhaftes stehen, wird nichts hochgeladen. Ohne neues PDF fällt ein altes weg.
+- **Ablage** wie bei Nikos Kursen im Bucket `decks` unter `<kürzel>/trainer|teilnehmer|pdf|quellen/…`,
+  so gelten Freigaben, Notizen, Fassungen und Tagebuch unverändert. Das Kürzel entsteht aus dem Namen plus
+  Zufall und ist nirgends zu sehen.
+- **Datenbank** (Migration `20261116100000_kt_eigene_kurse.sql`; keine bestehende Regel geändert):
+  `kurse.angelegt_im_tool` (nur solche Kurse zeigt „Kurs bearbeiten“; Kurse aus dem Deck-Sync bleiben in den
+  Kursordnern gepflegt; nach dem Anlegen unveränderlich). Kürzel im Format `[a-z0-9][a-z0-9-]{1,39}`
+  (CHECK), unveränderlich; Kürzel von Nicht-Admins enden auf `-` plus fünf Zeichen (so erzeugt es die App),
+  damit niemand ein Kürzel besetzt, das Niko später braucht. Kein neuer Kurs auf einem Kürzel, unter dem
+  noch Dateien liegen, und kein Löschen eines Kurses, solange Dateien darunter liegen: So übernimmt nie
+  jemand fremde Dateien, und es entstehen keine verwaisten Dateien (die der Admin lesen dürfte). Kursname
+  2–80 Zeichen ohne unsichtbare Zeichen. Kurstage: jeder Dateipfad im Ordner des eigenen Kurses und im
+  Unterordner seiner Spalte. Nicht-Trainer werden vor allen Prüfungen abgewiesen. Der Upsert des
+  Deck-Syncs bleibt möglich (getestet). Neuer privater Bucket `kt-vorlagen` (nur Zip, 40 MB): lesen alle
+  aktiven Trainer, schreiben nur der Admin.
+- **Startpaket** (`scripts/startpaket.mjs`, lädt der Deck-Sync hoch, wenn es sich ändert):
+  `CLAUDE.md` für den ganzen Kurs (planen, je Kurstag ein Ordner, bauen, hochladen), `KURSPLAN.md`,
+  `_vorlage-kurstag/` mit H&G-Engine (wegen der Brücken), Build, `teilnehmer.py`, `pdf.py`,
+  `pdf_fassung.py`, Gestaltungsregeln, Logo und Bildmarke und vier erfundenen Beispielfolien (Niko: „a)
+  neutrales Beispiel“). Der Tagesordner hat eine eigene `CLAUDE.md`; als Zip hochgeladen ist er das
+  Quellpaket des Tages, aus dem andere Trainer Fassungen bauen.
+- **Öffnen im Tool:** Decks eines Kurses öffnen sich per Klick nur, wenn der Kurs einem selbst oder dem
+  Admin gehört. Decks anderer Trainer nur herunterladen (wie fremde Fassungen seit Baustein 4): Im Tool
+  liefe ein Deck mit der Anmeldung dessen, der es öffnet (OFFENE-FRAGEN Nr. 21).
+- **Löschen:** Ein Tag mit Fassungen (auch fremden) lässt sich nicht löschen, ebenso nicht der Kurs.
+  „Kurs löschen“ entfernt erst die Kurstage, dann die Dateien, dann den Kurs; es nimmt Freigaben und
+  Tagebücher mit, auch gemeinsame Durchläufe anderer.
+
+**Laien-Test:** Als Test-Trainer „Startpaket herunterladen“, „Kurs anlegen“, einen Tag anlegen und das
+Beispiel-Deck aus dem Startpaket hochladen (oder ein selbst gebautes). Der Kurs erscheint unter „Kurstage“
+nur beim Test-Trainer; nach einer Freigabe an Niko sieht Niko ihn, öffnet ihn aber nur per Download.
+
 ---
 
 ## 5. Nicht im Umfang

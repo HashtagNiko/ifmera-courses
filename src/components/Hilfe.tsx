@@ -9,8 +9,8 @@ import { NOTIZEN_MODI, STUFEN } from '../lib/trainer'
  * Anleitung oder die Hilfe einmal öffnet (nur in diesem Browser gemerkt).
  */
 
-export type HilfeSeite = 'kurstage' | 'tagebuch' | 'freigaben' | 'notizen' | 'fassungen' | 'profil'
-export const SEITEN: HilfeSeite[] = ['kurstage', 'tagebuch', 'freigaben', 'notizen', 'fassungen', 'profil']
+export type HilfeSeite = 'kurstage' | 'tagebuch' | 'freigaben' | 'eigene-kurse' | 'notizen' | 'fassungen' | 'profil'
+export const SEITEN: HilfeSeite[] = ['kurstage', 'tagebuch', 'freigaben', 'eigene-kurse', 'notizen', 'fassungen', 'profil']
 
 /** Welche Hilfe passt zur Adresse? „/fassungen/123“ → „fassungen“ */
 export function seiteAus(pfad: string): HilfeSeite | null {
@@ -156,6 +156,7 @@ export const SEITENTITEL: Record<HilfeSeite, string> = {
   kurstage: 'Kurstage',
   tagebuch: 'Trainertagebuch',
   freigaben: 'Freigaben',
+  'eigene-kurse': 'Eigene Kurse',
   notizen: 'Eigene Notizen',
   fassungen: 'Eigene Fassungen',
   profil: 'Profil',
@@ -185,6 +186,13 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
       <li>
         Ist der Kurs dir nur freigegeben, steht oben „Freigegeben von …“. Nutzen kannst du ihn, verändern
         nicht. In Decks, die du öffnest oder herunterlädst, steht dein Name in der Fußzeile.
+      </li>
+      <li>
+        Im Tool öffnen sich deine eigenen Kurse und die des Kursautors. Decks anderer Trainer lädst du über
+        „Trainer“ herunter und öffnest sie auf deinem Rechner; im Tool liefe ihr Deck mit deiner Anmeldung.
+      </li>
+      <li>
+        Bei einem eigenen Kurs führt „Kurs bearbeiten“ zu Kurstagen und Dateien (siehe „Eigene Kurse“).
       </li>
       <li>
         Steht auf der Kachel „Notizen als Stichpunkte“, zeigt das Cockpit statt ausführlicher Notizen
@@ -244,6 +252,27 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
         </li>
       </Liste>
     </>
+  ),
+  'eigene-kurse': (
+    <Liste>
+      <li>
+        <b>Startpaket:</b> „Startpaket herunterladen“ und das Zip Claude geben. Claude plant mit dir Thema,
+        Zielgruppe und Kurstage und baut die Decks (wie, steht im Startpaket selbst).
+      </li>
+      <li>
+        <b>Kurs anlegen:</b> Namen eingeben, „Kurs anlegen“. Der Kurs gehört dir; andere sehen ihn erst, wenn du
+        ihn unter „Freigaben“ freigibst.
+      </li>
+      <li>
+        <b>Kurs bearbeiten:</b> je Kurstag „Tag anlegen“, dann „Dateien hochladen“: das gebaute Deck aus dist/,
+        den Ordner des Tages als Zip und, falls vorhanden, das PDF. Die Teilnehmerfassung macht das Tool.
+      </li>
+      <li>Neue Version eines Tages: einfach erneut „Dateien hochladen“. Das Tool hält immer den letzten Stand.</li>
+      <li>
+        „Kurs löschen“ entfernt den Kurs mit allen Tagen, Dateien, Freigaben und Tagebüchern. Gibt es zu einem
+        Tag noch Fassungen anderer Trainer, geht das erst, wenn sie gelöscht sind.
+      </li>
+    </Liste>
   ),
   notizen: (
     <Liste>
@@ -309,6 +338,7 @@ export function Ablauf() {
       <li>Eigene Notizen und eigene Fassungen gehören dem, der sie anlegt. Das Original bleibt immer unverändert.</li>
       <li>Fassungen kann man einander freigeben, in beide Richtungen, und darauf aufbauen.</li>
       <li>Im Tagebuch hält man Durchläufe fest, auch gemeinsam: wer welchen Tag hält, mit welcher Fassung, was vermittelt ist.</li>
+      <li>Unter „Eigene Kurse“ legt jeder Trainer eigene Kurse an und baut sie mit Claude und dem Startpaket.</li>
     </ol>
   )
 }

@@ -2,6 +2,59 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-16 · Baustein 10 · Eigene Kurse im Tool, Startpaket für Claude
+
+- Entscheidungen Niko (16.11.2026): Baustein bauen; eigene Kurse darf jeder aktive Trainer anlegen;
+  Startpaket mit neutralem, erfundenem Beispiel. Einspielen der Migration als gelber Schritt (sie schränkt
+  bestehende Schreibwege ein, auch den Deck-Sync in Randfällen): Niko „Ja“.
+- Migration `20261116100000_kt_eigene_kurse.sql` (keine bestehende Regel geändert): `kurse.angelegt_im_tool`
+  (unveränderlich), CHECK `kurse_kuerzel_format`, Trigger `kt_kurse_pruefen` (Nicht-Trainer und
+  Nicht-Besitzer zuerst 42501; Kürzel von Nicht-Admins mit Zufallsendung; Kürzel unveränderlich; Name
+  2–80 Zeichen ohne unsichtbare Zeichen), `kt_kurse_kuerzel_frei` (AFTER INSERT: kein Kürzel mit
+  verbliebenen Dateien), `kt_kurse_loeschen_pruefen` (kein Löschen, solange Dateien darunter liegen),
+  `kt_kurstage_pfade_pruefen` (Pfade nur im eigenen Kursordner und im Unterordner der Spalte), Bucket
+  `kt-vorlagen` (privat, nur Zip, 40 MB; lesen aktive Trainer, schreiben Admin). Rückbau mit
+  `storage.allow_delete_query`, verweigert bei Kursen anderer Trainer. Test
+  `20261116100000_kt_eigene_kurse_test.sql` (E00–E66).
+- Zweiter Blick (Sub-Agent) vor dem Einspielen. Erster Durchgang, zwei Blocker:
+  - Zwei alte Rechte-Tests (C28, C54) wären an der neuen Namensprüfung gescheitert, weil die Trigger vor
+    den Regeln laufen.
+  - Der Rückbau scheiterte an Supabases Löschsperre.
+
+  Beide behoben. Außerdem umgesetzt: Wettlauf beim Anlegen (Prüfung jetzt AFTER INSERT), keine neuen
+  verwaisten Dateien, keine Auskunft an Nicht-Trainer, Kürzel-Besetzung, Selbstprüfung nur lesend,
+  Escapes als Text, Bucketname mit `kt-`.
+
+  Probelauf (zurückgerollt): Migration mit jedem der 9 Rechte-Tests grün, Rückbau grün. Sechs Gegenproben
+  schlagen an: Trigger kurse weg, Leseregel kt-vorlagen ohne Trainerprüfung, Trigger kurstage weg,
+  Pfadprüfung ohne Backslash, Kürzel-frei-Trigger weg, Löschsperre weg.
+- App: Reiter „Eigene Kurse“ (`EigeneKursePage.tsx`: Startpaket, Kurs anlegen, eigene Kurse) und
+  „Kurs bearbeiten“ (`KursBearbeitenPage.tsx`: Name, Kurstage, Dateien hochladen, Ändern, Löschen, Kurs
+  löschen); Logik in `src/lib/eigeneKurse.ts` (Teilnehmerfassung beim Hochladen wie Baustein 9, nichts
+  wird hochgeladen, wenn darin Trainertexte übrig bleiben). Kurstage: „Kurs bearbeiten“ bei eigenen
+  Kursen; Decks von Kursen anderer Trainer (außer Admin) öffnen sich nicht mehr im Tool, nur Download
+  (OFFENE-FRAGEN Nr. 21, 25). Hilfe, Anleitung, Einrichtungs-Datei ergänzt.
+- Startpaket (`scripts/startpaket.mjs`, Texte in `scripts/startpaket/`): Anleitung für den ganzen Kurs
+  und für einen Kurstag, Kursplan-Vorlage, H&G-Engine, Build, `teilnehmer.py`, `pdf.py`,
+  `pdf_fassung.py`, Gestaltungsregeln, Logo, Bildmarke, vier erfundene Beispielfolien. Der Deck-Sync lädt
+  es hoch, wenn es sich ändert. Test `scripts/startpaket.test.mjs`: Inhalt, reproduzierbares Zip, echter
+  Bau mit Python (4 Folien, Teilnehmerfassung sauber). Von Hand zusätzlich PDF erzeugt (4 Seiten) und
+  angesehen.
+- Zweiter Durchgang des zweiten Blicks: alles behoben, keine neuen Blocker. Umgesetzt: Test E52b mit echtem
+  Kurs. Merkposten aus dem Hinweis: Würde im Speicher die Versionierung eingeschaltet, zählten alte
+  Versionen als Dateien, und Kurse ließen sich nicht mehr löschen (heute aus).
+- Eingespielt nach Sicherung (`backup/2026-11-16_vor_kt_eigene_kurse.json`, geprüft, in einer Kette mit
+  der Migration). Danach Rechte-Tests 9/9, Zustand lesend geprüft: 4 Trigger aktiv, Bucket privat,
+  14 Speicher-Regeln, `anon` ohne Rechte.
+- Deck-Sync für alle vier Kurse fehlerfrei; der Upsert der Kurse läuft mit den neuen Triggern. Das
+  Startpaket ist hochgeladen.
+- Fehler beim ersten Lauf: Ordner-Einträge im Zip trugen die aktuelle Uhrzeit, also galt das Startpaket bei
+  jedem Lauf als geändert. Behoben (Ordner mit festem Datum); der Test prüft jetzt das Datum jedes Eintrags.
+  Zweiter Probelauf: „unverändert“.
+- Nach dem Hochladen: Rechte-Tests 9/9, Downloads 184/184. Speicher 375,1 MB.
+- Unit-Tests 117 grün (neu: `eigeneKurse.test.ts`, `startpaket.test.mjs`, Hilfe-Beschriftungen).
+- OFFENE-FRAGEN Nr. 25–29 neu.
+
 ## 2026-11-16 · Baustein 7 (Nachtrag) · Brücken bleiben vollständig; H&G-Quellpakete neu
 
 - Entscheidung Niko (15.11.2026): Die „Brücken“ (`data-bruecke`, `data-bruecke-kann`, Überleitung zur

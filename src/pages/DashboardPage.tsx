@@ -34,6 +34,8 @@ export default function DashboardPage() {
   const [durchlaufName, setDurchlaufName] = useState<string | null>(null)
   const ich = useIch()
   const [namen, setNamen] = useState<Map<string, string>>(new Map())
+  // Wem vertraut man beim Öffnen im Tool? Sich selbst und dem Admin (Baustein 10, OFFENE-FRAGEN Nr. 21)
+  const [admins, setAdmins] = useState<Set<string>>(new Set())
 
   const [freigaben, setFreigaben] = useState<Map<string, MeineFreigabe>>(new Map())
   // Erst wenn die eigene Freigabe bekannt ist, stehen bei fremden Kursen die richtigen Dateien fest
@@ -51,7 +53,10 @@ export default function DashboardPage() {
   // und die eigenen Stufen (wer bei fremden Kursen Notizen schreiben darf)
   useEffect(() => {
     trainerLaden()
-      .then((t) => setNamen(new Map(t.map((x) => [x.id, x.anzeigename]))))
+      .then((t) => {
+        setNamen(new Map(t.map((x) => [x.id, x.anzeigename])))
+        setAdmins(new Set(t.filter((x) => x.rolle === 'admin').map((x) => x.id)))
+      })
       .catch(() => setNamen(new Map()))
     meineFreigabenLaden(ich.id)
       .then(setFreigaben)
@@ -105,6 +110,10 @@ export default function DashboardPage() {
   const meineFreigabe = kurs ? freigaben.get(kurs.id) : undefined
   // Baustein 7: mit "nur Stichpunkte" gibt es die kurzen Fassungen von Deck und Quellpaket
   const modus: NotizenModus = kurs ? notizenModus(kurs.besitzer_id, ich.id, meineFreigabe) : 'voll'
+  // Ein Deck läuft im Tool mit der Anmeldung dessen, der es öffnet. Im Tool öffnen deshalb nur eigene Kurse
+  // und die des Admins; Decks anderer Trainer lädt man herunter und öffnet sie auf dem Rechner.
+  const oeffnenImTool = Boolean(kurs && (!fremderKurs || admins.has(kurs.besitzer_id)))
+  const bearbeitbar = Boolean(kurs && !fremderKurs && kurs.angelegt_im_tool)
 
   return (
     <div className="min-h-full bg-ifm-cream">
@@ -137,6 +146,17 @@ export default function DashboardPage() {
             <span className="text-ifm-blue">{namen.get(kurs.besitzer_id) ?? 'einem anderen Trainer'}</span>.
             Du kannst ihn nutzen, aber nicht verändern.
             {modus === 'stichpunkte' && ' Im Cockpit siehst du statt der Notizen Stichpunkte.'}
+            {!oeffnenImTool &&
+              ' Die Decks öffnest du nach dem Herunterladen („Trainer“) auf deinem Rechner; im Tool liefe ein Deck eines anderen Trainers mit deiner Anmeldung.'}
+          </p>
+        )}
+
+        {bearbeitbar && kurs && (
+          <p className="mb-6 text-sm text-ifm-gray">
+            Dein eigener Kurs.{' '}
+            <Link to={`/eigene-kurse/${kurs.id}`} className="font-medium text-ifm-blue underline-offset-2 hover:underline">
+              Kurs bearbeiten
+            </Link>
           </p>
         )}
 
@@ -153,7 +173,9 @@ export default function DashboardPage() {
 
         {!fehler && !laedt && kurse.length > 0 && tage.length === 0 && (
           <p className="rounded-lg bg-ifm-lightblue text-ifm-blue text-sm p-4">
-            Noch keine Kurstage angelegt. Nach dem ersten Deck-Sync erscheinen sie hier.
+            {bearbeitbar
+              ? 'Noch keine Kurstage. Unter „Kurs bearbeiten“ legst du sie an.'
+              : 'Noch keine Kurstage angelegt. Nach dem ersten Deck-Sync erscheinen sie hier.'}
           </p>
         )}
 
@@ -177,6 +199,7 @@ export default function DashboardPage() {
                     fassung={Boolean(kurs && darfFassung(kurs.besitzer_id, ich.id, meineFreigabe?.stufe))}
                     fassungen={fassungsZahl.get(t.id) ?? 0}
                     modus={modus}
+                    oeffnen={oeffnenImTool}
                   />
                 ))}
             </div>
@@ -242,6 +265,7 @@ function Kachel({
   fassung,
   fassungen,
   modus,
+  oeffnen,
 }: {
   tag: TagImSegment
   vermittelt: boolean
@@ -254,6 +278,8 @@ function Kachel({
   fassungen: number
   /** ausführliche Notizen oder nur Stichpunkte (Baustein 7) */
   modus: NotizenModus
+  /** Darf das Deck im Tool geöffnet werden (eigener Kurs oder Kurs des Admins)? Sonst nur herunterladen. */
+  oeffnen: boolean
 }) {
   // Welche Dateien man laden darf: bei "nur Stichpunkte" die kurzen Fassungen
   const pfade = pfadeFuer(tag, modus)
@@ -282,8 +308,9 @@ function Kachel({
   )
 
   const farbe = FARBEN[tag.art] ?? FARBEN.kurstag
+  const klickbar = Boolean(pfade.deck && oeffnen)
   const rahmen = `flex flex-col rounded-xl shadow-sm border ${vermittelt ? farbe.erledigt : farbe.offen} ${
-    pfade.deck ? 'hover:border-ifm-red transition-colors' : ''
+    klickbar ? 'hover:border-ifm-red transition-colors' : ''
   }`
 
   const downloads = (
@@ -307,7 +334,7 @@ function Kachel({
 
   return (
     <div className={rahmen}>
-      {pfade.deck ? (
+      {klickbar ? (
         <button
           // Eigene Notizen nur, solange man sie auch schreiben darf (Stufe "notizen" oder Besitzer)
           onClick={() => deckOeffnen(pfade.deck!, bezeichnung(tag), anpassung, notizen ? tag.id : undefined)}

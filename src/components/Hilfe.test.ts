@@ -15,6 +15,8 @@ describe('seiteAus', () => {
     expect(seiteAus('/fassungen/123')).toBe('fassungen')
     expect(seiteAus('/notizen/abc')).toBe('notizen')
     expect(seiteAus('/profil')).toBe('profil')
+    expect(seiteAus('/eigene-kurse')).toBe('eigene-kurse')
+    expect(seiteAus('/eigene-kurse/abc')).toBe('eigene-kurse')
     expect(seiteAus('/anleitung')).toBeNull()
     expect(seiteAus('/')).toBeNull()
   })
@@ -119,6 +121,13 @@ describe('Beschriftungen in Hilfe und Anleitung gibt es im Tool wirklich', () =>
     'Name speichern',
     'Passwort ändern',
     'Teilnehmer herunterladen',
+    'Eigene Kurse',
+    'Startpaket herunterladen',
+    'Kurs anlegen',
+    'Kurs bearbeiten',
+    'Tag anlegen',
+    'Dateien hochladen',
+    'Kurs löschen',
   ]
 
   for (const b of beschriftungen) {

@@ -94,6 +94,31 @@ export default function AnleitungPage() {
           </div>
         </Karte>
 
+        <Karte titel="Eigenen Kurs anlegen">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>Oben unter „Eigene Kurse“ auf „Startpaket herunterladen“ klicken.</li>
+            <li>
+              Das Zip entpacken, den Ordner nach dem Kurs benennen (zum Beispiel{' '}
+              <code>Dokumente\ifmera-Kurse\Brandschutz</code>) und Claude geben. Claude fragt nach Thema,
+              Zielgruppe und Kurstagen, schreibt einen Kursplan und baut je Kurstag ein Deck in einem eigenen
+              Ordner (<code>Tag1</code>, <code>Tag2</code> …).
+            </li>
+            <li>Im Tool: „Kurs anlegen“, dann bei „Kurs bearbeiten“ je Kurstag „Tag anlegen“.</li>
+            <li>
+              Je Tag „Dateien hochladen“: das Deck aus <code>dist/</code>, den Ordner des Tages als Zip und, falls
+              Claude eins gemacht hat, das PDF. Die Teilnehmerfassung entsteht im Tool.
+            </li>
+            <li>
+              Der Kurs gehört dir. Unter „Freigaben“ gibst du ihn anderen Trainern frei, genau wie jeden anderen
+              Kurs; dann können sie ihn nutzen, eigene Notizen schreiben und eigene Fassungen bauen.
+            </li>
+          </ol>
+          <p className="mt-3 text-ifm-gray">
+            Gesichert ist, was im Tool liegt. Der Kursordner auf deinem Rechner bleibt die Werkbank: nicht löschen,
+            dort arbeitet Claude weiter.
+          </p>
+        </Karte>
+
         <Karte titel="Die Seiten im Überblick">
           <div className="space-y-5">
             {SEITEN.map((s) => (
@@ -117,6 +142,10 @@ export default function AnleitungPage() {
             <Frage frage="Im Cockpit stehen nur Stichpunkte statt Notizen.">
               Der Kurs ist dir mit „Notizen: nur Stichpunkte“ freigegeben. Das legt fest, wem der Kurs gehört,
               unter „Freigaben“. Aktionen und Brücken (Überleitung zur nächsten Folie) stehen vollständig da.
+            </Frage>
+            <Frage frage="Ein Deck öffnet sich nicht per Klick auf die Kachel.">
+              Der Kurs gehört einem anderen Trainer. Solche Decks lädst du über „Trainer“ herunter und öffnest sie
+              auf deinem Rechner: Im Tool liefe ein fremdes Deck mit deiner Anmeldung.
             </Frage>
             <Frage frage="Im Schulungsraum ist kein Internet.">
               Lade das Deck vorher unter „Herunterladen: Trainer“ herunter. Die Datei läuft ohne Internet in
