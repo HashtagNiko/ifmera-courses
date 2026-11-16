@@ -54,6 +54,11 @@ Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, ge�
 - Nach dem Hochladen: Rechte-Tests 9/9, Downloads 184/184. Speicher 375,1 MB.
 - Unit-Tests 117 grün (neu: `eigeneKurse.test.ts`, `startpaket.test.mjs`, Hilfe-Beschriftungen).
 - OFFENE-FRAGEN Nr. 25–29 neu.
+- Nikos Laien-Test mit Test-Konto und eigenem Konto: Startpaket laden, Kurs und Kurstag anlegen, Dateien
+  hochladen, Deck öffnen, freigeben, als Niko nur Download, Kurs löschen. Ergebnis: **passt**
+  (16.11.2026), Baustein 10 damit abgeschlossen. Lesend geprüft: Der Testkurs ist samt Kurstag und Dateien
+  weg, im Bucket liegen keine neuen verwaisten Dateien (nur die zwei bekannten unter `test/`, OFFENE-FRAGEN
+  Nr. 14). Testdateien in `tmp/` gelöscht.
 
 ## 2026-11-16 · Baustein 7 (Nachtrag) · Brücken bleiben vollständig; H&G-Quellpakete neu
 
