@@ -2,6 +2,22 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-16 · Aufräumen · Offene Punkte entschieden, Testdateien gelöscht
+
+- Entscheidungen Niko (16.11.2026), alle wie empfohlen: OFFENE-FRAGEN Nr. 14 (Testdateien löschen: ja),
+  Nr. 26 (Speicher beobachten), Nr. 27 (keine Dateisicherung eigener Kurse), Nr. 28 (Löschsperre durch
+  Fassungen bleibt), Nr. 29 (Objektliste in CLAUDE.md ergänzen: ja). Nr. 10 erledigt (Ordner nicht mehr
+  im Repo-Ordner).
+- Gelber Schritt Nr. 14: die zwei verwaisten Testdateien `test/mit-charset.html` und
+  `test/ohne-charset.html` (je 54 Byte, August 2026) als Admin über die Storage-API gelöscht. Einmal-Skript
+  in `tmp/` mit Probelauf; vorher Dateien und ihre Speicher-Angaben in `backup/2026-11-16_testdateien/`
+  gesichert und geprüft. Zweiter Blick (Sub-Agent): keine Blocker; übernommen: Speicher-Angaben
+  mitsichern, Nachprüfung per SQL unabhängig vom Skript (0 Dateien unter `test/`). Rückgängig: Niko lädt
+  die Dateien aus der Sicherung im Supabase-Dashboard wieder hoch. Skript danach gelöscht. Rechte-Tests 9/9.
+- `CLAUDE.md` §6 (Nikos „ja“): Objektliste ergänzt um alle `kt_*`-Trigger und die Buckets `fassungen` und
+  `kt-vorlagen` samt Policies.
+- Dateien: `CLAUDE.md`, `OFFENE-FRAGEN.md`, `CHANGELOG.md`
+
 ## 2026-11-16 · Baustein 10 · Eigene Kurse im Tool, Startpaket für Claude
 
 - Entscheidungen Niko (16.11.2026): Baustein bauen; eigene Kurse darf jeder aktive Trainer anlegen;

@@ -147,7 +147,9 @@ Das Repo ist öffentlich, und GitHub Pages liefert jede Datei ohne Login aus.
 
 **Objekte des Kurs-Tools – nur diese darf Claude ändern:**
 Tabellen `kurse`, `kurstage`, `durchlaeufe`, `fortschritt`, `kurs_zugriff` und alle `kt_*` ·
-Funktion `hat_kurszugriff` und alle `kt_*`-Funktionen · Bucket `decks` und seine Policies.
+Funktion `hat_kurszugriff` und alle `kt_*`-Funktionen · alle `kt_*`-Trigger, auch die auf `kurse`,
+`kurstage` und `fortschritt` · Buckets `decks`, `fassungen` und `kt-vorlagen` und ihre Policies
+(Namen beginnen mit `kt `).
 
 **Nicht verwechseln:** Das Prüfungstool hat eigene Tabellen mit ähnlichen Namen (`trainer`, `kurs`,
 `kurs_freigabe`, `pruefung_freigabe`, `eingeladene_trainer` u. a.). Jedes neue Konto im Projekt bekommt
