@@ -2,6 +2,20 @@
 
 Neueste Einträge oben. Je Eintrag: Datum, Baustein, was sich geändert hat, geänderte Dateien.
 
+## 2026-11-16 · Baustein 7 (Nachtrag) · Brücken bleiben vollständig; H&G-Quellpakete neu
+
+- Entscheidung Niko (15.11.2026): Die „Brücken“ (`data-bruecke`, `data-bruecke-kann`, Überleitung zur
+  nächsten Folie; 51 Folien im H&G-Kurs) bleiben in der Stichpunkt-Fassung vollständig, wie die Aktionen.
+- `scripts/stichpunkte.mjs`: Brücken zählen in der Leck-Prüfung ausdrücklich als sichtbar (vorher nur, weil
+  sie am Folien-Element stehen). Neuer Test in `scripts/stichpunkte.test.mjs`: Brücken bleiben Byte für Byte,
+  ein Notizsatz, der auch in der Brücke steht, ist kein Leck, der Rest der Notiz schon. Gegenprobe (Brücken
+  als geheim behandelt) schlägt an.
+- Hilfe („?“ auf der Kursseite), Anleitung (Häufige Fragen) und `SPEC.md`: Hinweis, dass Aktionen und
+  Brücken vollständig bleiben.
+- H&G voll: 15 Quellpakete und 15 Stichpunkt-Quellpakete mit dem Stand von Baustein 9 neu geladen
+  (Leck-Prüfung vor jedem Hochladen ohne Fund). Rechte-Tests 8/8, Downloads 184/184, Quellpakete 44/44
+  identisch mit den Decks.
+
 ## 2026-11-15 · Baustein 9 · Teilnehmerfassung und PDF zu Fassungen, Ablage
 
 - `src/lib/teilnehmer.ts`: Teilnehmerfassung im Browser, übertragen aus Nikos `engine/teilnehmer.py`

@@ -3,7 +3,8 @@
  *
  * Für Trainer mit der Freigabe "nur Stichpunkte" gibt es zu jedem Kurstag eine zweite Trainerfassung und
  * ein zweites Quellpaket. Darin sind die Trainer-Notizen (data-notes) jeder Folie durch Stichpunkte
- * ersetzt; alles andere bleibt Byte für Byte gleich (auch data-aktion, Nikos Entscheidung 15.11.2026).
+ * ersetzt; alles andere bleibt Byte für Byte gleich, auch Aktionen (data-aktion) und Brücken (data-bruecke,
+ * data-bruecke-kann), Nikos Entscheidungen 15.11.2026.
  *
  * Die Stichpunkte liegen je Deck als JSON im Kursordner (nicht im öffentlichen Repo):
  *   { deck, folien: [{ nr, titel, notiz_sha256, stichpunkte: ["…"] }] }
@@ -12,7 +13,7 @@
  * volle Notiz. Der Sync meldet solche Folien.
  *
  * Vor jedem Hochladen prüft leckPruefen(), dass kein Satz der Original-Notizen in der kurzen Fassung
- * steht (außer er steht ohnehin sichtbar auf einer Folie oder in einer Aktion).
+ * steht (außer er steht ohnehin sichtbar auf einer Folie, in einer Aktion oder einer Brücke).
  */
 import { createHash } from 'node:crypto'
 import { JSDOM } from 'jsdom'
@@ -167,8 +168,8 @@ function entschluesseln(text) {
 
 /**
  * Was ohnehin zur Folie gehört: ihr Text (ohne Skripte und Stile) und die Werte ihrer Attribute, etwa
- * aufklappbare Quiz-Antworten (data-a), außer den Notizen; dazu die Aktionen. Was außerhalb der Folien
- * steht (Engine, Skripte), zählt nicht als sichtbar.
+ * aufklappbare Quiz-Antworten (data-a), außer den Notizen; dazu Aktionen und Brücken, die vollständig
+ * bleiben. Was außerhalb der Folien steht (Engine, Skripte), zählt nicht als sichtbar.
  */
 function sichtbarerText(html) {
   const doc = new JSDOM(html).window.document
@@ -181,7 +182,9 @@ function sichtbarerText(html) {
       for (const a of Array.from(el.attributes)) if (a.name !== 'data-notes') teile.push(a.value)
     }
   }
-  for (const el of doc.querySelectorAll('[data-aktion]')) teile.push(el.getAttribute('data-aktion') ?? '')
+  for (const name of ['data-aktion', 'data-bruecke', 'data-bruecke-kann']) {
+    for (const el of doc.querySelectorAll(`[${name}]`)) teile.push(el.getAttribute(name) ?? '')
+  }
   return teile.join(' ').replace(/\s+/g, ' ')
 }
 

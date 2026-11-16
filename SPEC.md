@@ -244,7 +244,8 @@ nach App oder VS Code.
   Quellpaket nur in der Stichpunkt-Fassung (`<kurs>/trainer-kurz/`, `<kurs>/quellen-kurz/`); die
   ausführlichen (`trainer/`, `quellen/`) und **fremde Fassungen** sperrt die Datenbank für ihn
   (fremde Fassungen enthalten ausführliche Notizen). Eigene Fassungen sieht er immer.
-- Die „Aktion“-Zeilen bleiben vollständig (Niko, 15.11.2026). Teilnehmerfassung und PDF enthalten keine
+- Die „Aktion“-Zeilen bleiben vollständig, ebenso die „Brücken“ (Überleitung zur nächsten Folie,
+  `data-bruecke`, `data-bruecke-kann`) (Niko, 15.11.2026). Teilnehmerfassung und PDF enthalten keine
   Notizen und bleiben gleich.
 - Die Stichpunkte schreibt Claude, je Folie 1–5, aus der Notiz; sie liegen je Deck als JSON im Kursordner
   (`50_H&G-Kurs/stichpunkte/`, nicht im öffentlichen Repo), mit der Prüfsumme der Original-Notiz. Der

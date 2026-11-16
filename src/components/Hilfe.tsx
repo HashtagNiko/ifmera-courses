@@ -188,7 +188,7 @@ export const SEITENHILFE: Record<HilfeSeite, ReactNode> = {
       </li>
       <li>
         Steht auf der Kachel „Notizen als Stichpunkte“, zeigt das Cockpit statt ausführlicher Notizen
-        Stichpunkte; das gilt auch für Download und Quellpaket.
+        Stichpunkte; das gilt auch für Download und Quellpaket. Aktionen und Brücken stehen dort vollständig.
       </li>
     </Liste>
   ),

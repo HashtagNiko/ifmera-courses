@@ -102,6 +102,24 @@ describe('Stichpunkt-Fassung', () => {
     expect(leckPruefen(imSkript, [{ name: 'd.html', inhalt: mitSkript }]).length).toBe(1)
   })
 
+  it('Brücken bleiben vollständig und gelten nicht als Leck (Nikos Entscheidung 15.11.2026)', () => {
+    const bruecke = 'Von hier geht es weiter zum Wetterbericht, der morgen früh für die Region kommt.'
+    const kann = 'Wer mag, schaut vorher noch kurz auf die Karte mit den Niederschlägen von gestern.'
+    const notiz = `${bruecke} Der Rest der Notiz ist nur für den Trainer gedacht und bleibt verborgen.`
+    const folie = `<section class="slide" data-notes="${notiz}" data-bruecke="${bruecke}" data-bruecke-kann="${kann}"><h2 class="folientitel">Wetter</h2></section>`
+    const d = engine.replace('__SLIDES__', folie)
+    const sp = { folien: [{ nr: 1, titel: 'Wetter', notiz_sha256: sha(notiz), stichpunkte: ['Wetter morgen'] }] }
+    const k = kurzDeck(d, sp).html
+    const el = new JSDOM(k).window.document.querySelector('.slide')
+    expect(el.getAttribute('data-bruecke')).toBe(bruecke)
+    expect(el.getAttribute('data-bruecke-kann')).toBe(kann)
+    expect(el.getAttribute('data-notes')).toBe('• Wetter morgen')
+    // Der Satz aus der Brücke steht auch in der Notiz: kein Leck. Der Rest der Notiz schon.
+    expect(leckPruefen(d, [{ name: 'd.html', inhalt: k }])).toEqual([])
+    const mitRest = k.replace('</body>', '<p>Der Rest der Notiz ist nur für den Trainer gedacht und bleibt verborgen.</p></body>')
+    expect(leckPruefen(d, [{ name: 'd.html', inhalt: mitRest }]).length).toBe(1)
+  })
+
   it('Satz, der ohnehin sichtbar auf einer Folie steht, gilt nicht als Leck', () => {
     const satz = 'Dieser Satz steht sowohl auf der Folie als auch in der Notiz und ist lang genug.'
     const d = engine.replace('__SLIDES__', `<section class="slide" data-notes="${satz}"><h2 class="folientitel">A</h2><p>${satz}</p></section>`)

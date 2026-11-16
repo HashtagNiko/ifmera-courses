@@ -116,7 +116,7 @@ export default function AnleitungPage() {
             </Frage>
             <Frage frage="Im Cockpit stehen nur Stichpunkte statt Notizen.">
               Der Kurs ist dir mit „Notizen: nur Stichpunkte“ freigegeben. Das legt fest, wem der Kurs gehört,
-              unter „Freigaben“.
+              unter „Freigaben“. Aktionen und Brücken (Überleitung zur nächsten Folie) stehen vollständig da.
             </Frage>
             <Frage frage="Im Schulungsraum ist kein Internet.">
               Lade das Deck vorher unter „Herunterladen: Trainer“ herunter. Die Datei läuft ohne Internet in
